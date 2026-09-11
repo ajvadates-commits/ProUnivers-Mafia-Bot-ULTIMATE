@@ -1,0 +1,4 @@
+function commands(){return [
+ ["/start","Botni ishga tushirish va asosiy menyu"],["/mafia","Guruhda Mafia lobby yaratish"],["/profile","Profil, XP, level, games, wins va coins"],["/top","Global ranking"],["/balance","Coin balans"],["/shop","VIP, PRO, Premium Sticker va Clone Stars do‘koni"],["/referrals","Referral soni"],["/language","Til tanlash"],["/buttons","Inline tugmalar qo‘llanmasi"],["/roles","50 ta rol katalogi"],["/owner","Owner panel"],["/admin","Ruxsat berilgan admin paneli"],["/addadmin","Owner admin qo‘shadi va funksiyalarini belgilaydi"],["/givevip","VIP berish"],["/givepro","PRO berish"],["/ban","Banlash"],["/unban","Unban"],["/addchannel","Majburiy kanal qo‘shish"],["/removechannel","Majburiy kanalni olish"],["/clone","100 Stars clone krediti bilan bot tokenini ulash"],["/help","Asosiy yordam"]];}
+function render(){return commands().map(([c,d])=>`<b>${c}</b> — ${d}`).join("\n");}
+module.exports={commands,render};

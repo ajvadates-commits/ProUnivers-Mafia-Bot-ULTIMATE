@@ -1,0 +1,4 @@
+const groups=require("../database/groups");
+async function check(bot,userId,cloneId=0){ const channels=groups.requiredChannels(cloneId); const missing=[]; for(const c of channels){try{const m=await bot.getChatMember(c.chat_id,userId);if(["left","kicked"].includes(m.status))missing.push(c);}catch(e){missing.push(c);}} return missing;}
+function keyboard(missing){return{inline_keyboard:missing.map(c=>[{text:`📢 ${c.title||"Kanalga qo‘shiling"}`,url:c.invite_link||`https://t.me/${String(c.chat_id).replace("@","")}`}]).concat([[{text:"✅ Tekshirish",callback_data:"subscribe:check"}]])};}
+module.exports={check,keyboard};
