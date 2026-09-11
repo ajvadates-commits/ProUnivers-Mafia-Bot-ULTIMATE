@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    env:
+      - BOT_TOKEN
+      - OWNER_ID
+      - ADMIN_IDS
+      - DATABASE_PATH
+      - DEFAULT_LANGUAGE
+      - CLONE_BOT_TOKEN
+      - CLONE_OWNER_ID
+      - PORT
+      - NODE_ENV
+    ports:
+      - port: 10000
+        to: 3000
+    startCommand: npm start
