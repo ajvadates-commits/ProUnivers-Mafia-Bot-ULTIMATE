@@ -11,7 +11,7 @@ const config = {
     requireAllAdminRights: String(process.env.REQUIRE_ALL_ADMIN_RIGHTS || "true").toLowerCase() === "true"
   },
   minPlayers: Number(process.env.MIN_PLAYERS || 5),
-  maxPlayers: Number(process.env.MAX_PLAYERS || 20),
+  maxPlayers: Number(process.env.MAX_PLAYERS || 35),
   game: { lobbySeconds: 90, nightSeconds: 45, daySeconds: 90, voteSeconds: 45 },
   monetization: {
     vipPriceStars: Number(process.env.VIP_PRICE_STARS || 100),
