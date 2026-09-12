@@ -10,11 +10,50 @@ if(window.Telegram&&window.Telegram.WebApp){
   }catch(_){}
 }
 const API="/app/api";
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
-  activeTab=t.dataset.t;
+function countAnim(el,target,duration=800){
+  const start=performance.now();
+  const from=0;
+  function tick(now){
+    const p=Math.min((now-start)/duration,1);
+    const ease=1-Math.pow(1-p,3);
+    el.textContent=fmt(Math.round(from+(target-from)*ease));
+    if(p<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function staggerCards(container){
+  const cards=container.querySelectorAll(".card");
+  cards.forEach((c,i)=>{
+    c.style.opacity="0";
+    c.style.transform="translateY(16px) scale(.96)";
+    setTimeout(()=>{
+      c.style.transition="all .4s cubic-bezier(.4,0,.2,1)";
+      c.style.opacity="1";
+      c.style.transform="translateY(0) scale(1)";
+    },60*i);
+  });
+}
+function addRipple(el,e){
+  const r=document.createElement("span");
+  r.style.cssText="position:absolute;border-radius:50%;background:rgba(99,102,241,.3);width:20px;height:20px;pointer-events:none;animation:ripple .6s ease-out forwards";
+  const rect=el.getBoundingClientRect();
+  r.style.left=(e.clientX-rect.left-10)+"px";
+  r.style.top=(e.clientY-rect.top-10)+"px";
+  el.appendChild(r);
+  setTimeout(()=>r.remove(),600);
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",function(e){
+  activeTab=this.dataset.t;
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-  t.classList.add("active");
+  this.classList.add("active");
+  addRipple(this,e);
   renderTab();
+}));
+document.querySelectorAll(".kpi").forEach(k=>k.addEventListener("click",function(e){addRipple(this,e);}));
+document.querySelectorAll(".row").forEach(r=>r.addEventListener("mousemove",function(e){
+  const rect=this.getBoundingClientRect();
+  this.style.setProperty("--x",((e.clientX-rect.left)/rect.width*100)+"%");
+  this.style.setProperty("--y",((e.clientY-rect.top)/rect.height*100)+"%");
 }));
 function renderProfile(u){
   const av=$("av");
@@ -24,11 +63,9 @@ function renderProfile(u){
   $("lv").textContent="Daraja "+(u.level||1);
   const pct=Math.min(100,Math.round(((u.xp||0)/((u.level||1)*100))*100));
   $("xp").style.width=pct+"%";
-  $("k1").textContent=fmt(u.coins||0);
-  $("k2").textContent=fmt(u.games||0);
-  $("k3").textContent=fmt(u.wins||0);
+  setTimeout(()=>{countAnim($("k1"),u.coins||0);countAnim($("k2"),u.games||0);countAnim($("k3"),u.wins||0);},200);
   if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live";}
-  return "<div class='anim-tab'><div class='card'><div class='inner'>"+
+  return "<div class='anim-tab'><div class='card card-enter'><div class='inner'>"+
     "<div class='stat-row'><span class='k'>Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div>"+
     "<div class='stat-row'><span class='k'>Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div>"+
     "<div class='stat-row'><span class='k'>G'alaba nisbati</span><span class='v'>"+(u.winRate||0)+"%</span></div>"+
@@ -38,33 +75,36 @@ function renderProfile(u){
     "</div></div></div>";
 }
 function renderGroups(groups){
-  if(!groups||!groups.length) return "<div class='anim-tab'><div class='empty'><div class='ico'>&#9670;</div>Hali guruhlarda o'ynalmagan<br>Birinchi o'yinni boshlang</div></div>";
-  return "<div class='anim-tab'>"+groups.map(g=>
-    "<div class='card'><div class='row'>"+
+  if(!groups||!groups.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9670;</div>Hali guruhlarda o'ynalmagan<br>Birinchi o'yinni boshlang</div></div>";
+  const html="<div class='anim-tab'>"+groups.map((g,i)=>
+    "<div class='card card-enter' style='animation-delay:"+(i*60)+"ms'><div class='row'>"+
     "<div class='rAVA'>"+esc(g.title.charAt(0).toUpperCase())+"</div>"+
     "<div class='nm'>"+esc(g.title)+"<small>"+fmt(g.user_games)+" ta o'yin</small></div>"+
     "<div class='pts'>"+fmt(g.total_games)+"</div>"+
     "</div></div>"
   ).join("")+"</div>";
+  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  return html;
 }
 function renderTop(list){
-  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico'>&#9733;</div>Reyting hali shakllanmagan</div></div>";
-  return "<div class='anim-tab'>"+list.map((u,i)=>{
+  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9733;</div>Reyting hali shakllanmagan</div></div>";
+  const html="<div class='anim-tab'>"+list.map((u,i)=>{
     const rc=i===0?"g":i===1?"s":i===2?"b":"";
     const medal=i===0?"&#9733;":i===1?"&#9734;":i===2?"&#9830;":(i+1);
     const ph=u.photo_url?"<img src='"+esc(u.photo_url)+"'>":esc((u.first_name||"M").charAt(0).toUpperCase());
-    return "<div class='card'><div class='row'>"+
+    return "<div class='card card-enter' style='animation-delay:"+(i*50)+"ms'><div class='row'>"+
       "<div class='rank "+rc+"'>"+medal+"</div>"+
       "<div class='rAVA"+(i<3?" gold":"")+"'>"+ph+"</div>"+
       "<div class='nm'>"+esc(u.first_name||"O'yinchi")+"<small>"+fmt(u.wins||0)+" g'alaba · Lv."+fmt(u.level||1)+"</small></div>"+
       "<div class='pts"+(i===0?" gold":"")+"'>"+fmt(u.wins||0)+"</div>"+
       "</div></div>";
   }).join("")+"</div>";
+  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  return html;
 }
 function renderActivity(list){
-  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico'>&#9679;</div>Botda hali harakat yo'q<br>Botni sinab ko'ring!</div></div>";
-  const labels={command:"Buyruq",button:"Tugma",text:"Xabar"};
-  return "<div class='anim-tab'>"+list.map(a=>{
+  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9679;</div>Botda hali harakat yo'q<br>Botni sinab ko'ring!</div></div>";
+  const html="<div class='anim-tab'>"+list.map((a,i)=>{
     const parts=a.action.split(":");
     const type=parts[0];
     const val=parts.slice(1).join(":");
@@ -75,11 +115,13 @@ function renderActivity(list){
     else if(type==="text"){icon="&#9998;";color="var(--blue)";}
     const label=type==="command"?val:type==="button"?val:a.detail||"xabar";
     const time=a.created_at?new Date(a.created_at).toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"}):"";
-    return "<div class='card'><div class='row'>"+
+    return "<div class='card card-enter' style='animation-delay:"+(i*50)+"ms'><div class='row'>"+
       "<div class='rAVA' style='color:"+color+";border-color:"+color+"30'>"+icon+"</div>"+
       "<div class='nm'>"+esc(label)+"<small>"+time+"</small></div>"+
       "</div></div>";
   }).join("")+"</div>";
+  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  return html;
 }
 function renderTab(){
   const ct=$("ct");
