@@ -22,5 +22,5 @@ async function check(bot,chatId){
   return {ok:!config.security.requireBotAdminRights || missing.length===0,missing,member};
 }
 function text(r){if(r.ok)return "✅ Bot guruhda kerakli admin huquqlariga ega.";return "⛔ BOTGA MAJBURIY ADMIN HUQUQLARI KERAK\n\n"+r.missing.map(x=>"• "+x).join("\n")+"\n\nBotni guruhga administrator qilib, yuqoridagi huquqlarni bering.";}
-function audit(chatId,botId,result){db.prepare("INSERT INTO bot_rights_audit(chat_id,bot_id,ok,missing) VALUES(?,?,?,?)").run(String(chatId),botId||null,result.ok?1:0,JSON.stringify(result.missing||[]));}
+async function audit(chatId,botId,result){await db.prepare("INSERT INTO bot_rights_audit(chat_id,bot_id,ok,missing) VALUES(?,?,?,?)").run(String(chatId),botId||null,result.ok?1:0,JSON.stringify(result.missing||[]));}
 module.exports={check,text,audit,REQUIRED};

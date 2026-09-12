@@ -4,6 +4,7 @@ const config = {
   token: process.env.BOT_TOKEN || "",
   admins: (process.env.ADMIN_IDS || "").split(",").map(Number).filter(Boolean),
   ownerId: Number(process.env.OWNER_ID || 0),
+  databaseUrl: process.env.DATABASE_URL || "",
   databasePath: process.env.DATABASE_PATH || "./data/mafia.sqlite",
   defaultLanguage: process.env.DEFAULT_LANGUAGE || "uz",
   security: {

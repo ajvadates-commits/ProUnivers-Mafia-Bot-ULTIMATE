@@ -1,18 +1,85 @@
-const Database = require("better-sqlite3");
-const fs = require("fs");
-const path = require("path");
+const { Pool } = require("pg");
 const config = require("./config");
 
-const dir = path.dirname(config.databasePath);
-fs.mkdirSync(dir, { recursive: true });
+if (!config.databaseUrl) {
+  console.error("[DATABASE] DATABASE_URL is missing. Set it to a Neon/PostgreSQL connection string.");
+  process.exit(1);
+}
 
-const db = new Database(config.databasePath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  ssl: { rejectUnauthorized: false }
+});
 
-db.exec(`
+pool.on("error", (err) => console.error("[DATABASE] PG pool error", err));
+
+function convertPlaceholders(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
+function normalizeSql(sql) {
+  let s = sql.trim().replace(/;\s*$/, "");
+  const isOrIgnore = /^\s*insert\s+or\s+ignore\b/i.test(s);
+  s = s.replace(/^\s*(insert)\s+or\s+ignore\b/i, "$1");
+  if (isOrIgnore) s += " ON CONFLICT DO NOTHING";
+  if (/^\s*insert\s+/i.test(s) && !/\breturning\b/i.test(s)) {
+    s += " RETURNING *";
+  }
+  return s;
+}
+
+function makeStatement(executor, sql) {
+  const runSql = convertPlaceholders(normalizeSql(sql));
+  const querySql = convertPlaceholders(sql);
+  return {
+    async run(...params) {
+      const res = await executor.query(runSql, params);
+      return {
+        rowCount: res.rowCount ?? 0,
+        changes: res.rowCount ?? 0,
+        lastInsertRowid: res.rows && res.rows[0] ? res.rows[0].id ?? null : null
+      };
+    },
+    async all(...params) {
+      return (await executor.query(querySql, params)).rows;
+    },
+    async get(...params) {
+      const res = await executor.query(querySql, params);
+      return res.rows[0] ?? null;
+    }
+  };
+}
+
+const db = {
+  prepare(sql) { return makeStatement(pool, sql); },
+  async exec(sql) { if (sql.trim()) await pool.query(sql); },
+  async transaction(fn) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const tx = { prepare(sql) { return makeStatement(client, sql); } };
+      const result = await fn(tx);
+      await client.query("COMMIT");
+      return result;
+    } catch (err) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+  async close() { await pool.end(); },
+  pool
+};
+
+(async () => {
+  await db.exec(`
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
+  id BIGINT PRIMARY KEY,
   username TEXT,
   first_name TEXT,
   language TEXT DEFAULT 'uz',
@@ -27,8 +94,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS groups (
-  id INTEGER PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS "groups" (
+  id BIGINT PRIMARY KEY,
   title TEXT,
   language TEXT DEFAULT 'uz',
   games INTEGER DEFAULT 0,
@@ -36,7 +103,7 @@ CREATE TABLE IF NOT EXISTS groups (
 );
 CREATE TABLE IF NOT EXISTS games (
   id TEXT PRIMARY KEY,
-  chat_id INTEGER NOT NULL,
+  chat_id BIGINT NOT NULL,
   state TEXT NOT NULL,
   phase TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -44,22 +111,21 @@ CREATE TABLE IF NOT EXISTS games (
 );
 CREATE TABLE IF NOT EXISTS game_players (
   game_id TEXT NOT NULL,
-  user_id INTEGER NOT NULL,
+  user_id BIGINT NOT NULL,
   role TEXT,
   alive INTEGER DEFAULT 1,
-  PRIMARY KEY (game_id, user_id),
-  FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
+  PRIMARY KEY (game_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS transactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,
   amount INTEGER NOT NULL,
   type TEXT NOT NULL,
   meta TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS required_channels (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   chat_id TEXT NOT NULL,
   title TEXT,
   invite_link TEXT,
@@ -69,8 +135,8 @@ CREATE TABLE IF NOT EXISTS required_channels (
   UNIQUE(chat_id, clone_id)
 );
 CREATE TABLE IF NOT EXISTS purchases (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,
   product TEXT NOT NULL,
   stars INTEGER NOT NULL,
   telegram_payment_charge_id TEXT,
@@ -78,7 +144,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS entitlements (
-  user_id INTEGER PRIMARY KEY,
+  user_id BIGINT PRIMARY KEY,
   vip INTEGER DEFAULT 0,
   pro INTEGER DEFAULT 0,
   premium_sticker INTEGER DEFAULT 0,
@@ -89,7 +155,7 @@ CREATE TABLE IF NOT EXISTS bot_wallet (
   stars_balance INTEGER DEFAULT 0,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
-INSERT OR IGNORE INTO bot_wallet(id,stars_balance) VALUES(1,0);
+INSERT INTO bot_wallet(id,stars_balance) VALUES(1,0) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS economy_prices (
   id INTEGER PRIMARY KEY CHECK(id=1),
   money INTEGER DEFAULT 10,
@@ -98,18 +164,18 @@ CREATE TABLE IF NOT EXISTS economy_prices (
   clone_price INTEGER DEFAULT 100,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
-INSERT OR IGNORE INTO economy_prices(id,money,diamond,coin,clone_price) VALUES(1,10,50,100,100);
+INSERT INTO economy_prices(id,money,diamond,coin,clone_price) VALUES(1,10,50,100,100) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS bot_rights_audit (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   chat_id TEXT NOT NULL,
-  bot_id INTEGER,
+  bot_id BIGINT,
   ok INTEGER NOT NULL,
   missing TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS admins (
-  user_id INTEGER NOT NULL,
-  owner_id INTEGER NOT NULL,
+  user_id BIGINT NOT NULL,
+  owner_id BIGINT NOT NULL,
   username TEXT,
   permissions TEXT DEFAULT '[]',
   enabled INTEGER DEFAULT 1,
@@ -118,8 +184,8 @@ CREATE TABLE IF NOT EXISTS admins (
   PRIMARY KEY(user_id,owner_id)
 );
 CREATE TABLE IF NOT EXISTS clones (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  owner_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY,
+  owner_id BIGINT NOT NULL,
   token_cipher TEXT NOT NULL,
   bot_id TEXT UNIQUE NOT NULL,
   username TEXT,
@@ -130,23 +196,23 @@ CREATE TABLE IF NOT EXISTS clones (
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS clone_credits (
-  owner_id INTEGER PRIMARY KEY,
+  owner_id BIGINT PRIMARY KEY,
   credits INTEGER DEFAULT 0,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS clone_activity (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   clone_id INTEGER NOT NULL,
   type TEXT NOT NULL,
   chat_id TEXT,
-  user_id INTEGER,
+  user_id BIGINT,
   meta TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(clone_id) REFERENCES clones(id) ON DELETE CASCADE
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS banned_users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  actor_id BIGINT NOT NULL,
   reason TEXT,
   enabled INTEGER DEFAULT 1,
   clone_id INTEGER DEFAULT 0,
@@ -155,54 +221,121 @@ CREATE TABLE IF NOT EXISTS banned_users (
   UNIQUE(user_id, clone_id)
 );
 CREATE TABLE IF NOT EXISTS admin_audit (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  actor_id INTEGER NOT NULL,
+  id SERIAL PRIMARY KEY,
+  actor_id BIGINT NOT NULL,
   action TEXT NOT NULL,
   target_id TEXT,
   meta TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE TABLE IF NOT EXISTS referrals (
-  referrer_id INTEGER NOT NULL,
-  referred_id INTEGER PRIMARY KEY,
+  referrer_id BIGINT NOT NULL,
+  referred_id BIGINT PRIMARY KEY,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS achievements (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE,
+  title TEXT,
+  description TEXT,
+  reward INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS user_achievements (
+  user_id BIGINT,
+  achievement_id INTEGER,
+  unlocked_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(user_id,achievement_id)
+);
+CREATE TABLE IF NOT EXISTS quests (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE,
+  title TEXT,
+  description TEXT,
+  reward INTEGER DEFAULT 0,
+  active INTEGER DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS user_quests (
+  user_id BIGINT,
+  quest_id INTEGER,
+  progress INTEGER DEFAULT 0,
+  completed INTEGER DEFAULT 0,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(user_id,quest_id)
+);
+CREATE TABLE IF NOT EXISTS clans (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE,
+  owner_id BIGINT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS clan_members (
+  clan_id INTEGER,
+  user_id BIGINT,
+  rank TEXT DEFAULT 'member',
+  joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(clan_id,user_id)
+);
+CREATE TABLE IF NOT EXISTS referrals_v2 (
+  referrer_id BIGINT,
+  referred_id BIGINT PRIMARY KEY,
+  reward INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS bot_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS broadcast_log (
+  id SERIAL PRIMARY KEY,
+  actor_id BIGINT,
+  total INTEGER,
+  sent INTEGER,
+  failed INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS game_events (
+  id SERIAL PRIMARY KEY,
+  game_id TEXT,
+  chat_id BIGINT,
+  type TEXT,
+  payload TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS pro_groups (
+  id SERIAL PRIMARY KEY,
+  chat_id TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  price INTEGER NOT NULL DEFAULT 100,
+  currency TEXT NOT NULL DEFAULT 'coin',
+  invite_link TEXT DEFAULT '',
+  enabled INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS giveaways (
+  id SERIAL PRIMARY KEY,
+  owner_id BIGINT NOT NULL,
+  target_chat_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  prize_type TEXT NOT NULL,
+  prize_amount INTEGER NOT NULL,
+  winners_count INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  ends_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS giveaway_entries (
+  giveaway_id INTEGER NOT NULL,
+  user_id BIGINT NOT NULL,
+  username TEXT DEFAULT '',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(giveaway_id,user_id)
+);
 `);
+})().catch((err) => {
+  console.error("[DATABASE] Failed to initialize schema", err);
+  process.exit(1);
+});
 
-
-// Lightweight migrations for older databases.
-const userColumns=db.prepare('PRAGMA table_info(users)').all().map(x=>x.name);
-if(userColumns.length){
-  if(!userColumns.includes('money')) db.exec('ALTER TABLE users ADD COLUMN money INTEGER DEFAULT 0');
-  if(!userColumns.includes('diamonds')) db.exec('ALTER TABLE users ADD COLUMN diamonds INTEGER DEFAULT 0');
-}
-
-// Lightweight migration for projects created before owner-scoped admin permissions.
-const adminColumns=db.prepare('PRAGMA table_info(admins)').all().map(x=>x.name);
-if(adminColumns.length && !adminColumns.includes('owner_id')){
-  db.exec(`ALTER TABLE admins RENAME TO admins_legacy;
-  CREATE TABLE admins (user_id INTEGER NOT NULL, owner_id INTEGER NOT NULL, username TEXT, permissions TEXT DEFAULT '[]', enabled INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id,owner_id));`);
-  db.prepare(`INSERT INTO admins(user_id,owner_id,username,permissions,enabled,created_at,updated_at) SELECT user_id,?,?,?, ?,created_at,updated_at FROM admins_legacy`).run(config.ownerId, '', '[]', 1);
-  db.exec('DROP TABLE admins_legacy;');
-}
-
-// Scope migrations: required channels and bans must be independent per bot/clone.
-function hasSingleColumnPrimary(table,col){return db.prepare(`PRAGMA table_info(${table})`).all().some(x=>x.name===col && x.pk===1);}
-if(hasSingleColumnPrimary('required_channels','chat_id')){
- db.exec(`ALTER TABLE required_channels RENAME TO required_channels_legacy;
- CREATE TABLE required_channels (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id TEXT NOT NULL, title TEXT, invite_link TEXT, enabled INTEGER DEFAULT 1, clone_id INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(chat_id,clone_id));
- INSERT INTO required_channels(id,chat_id,title,invite_link,enabled,clone_id,created_at) SELECT id,chat_id,title,invite_link,enabled,0,created_at FROM required_channels_legacy;
- DROP TABLE required_channels_legacy;`);
-}
-if(hasSingleColumnPrimary('banned_users','user_id')){
- db.exec(`ALTER TABLE banned_users RENAME TO banned_users_legacy;
- CREATE TABLE banned_users (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, actor_id INTEGER NOT NULL, reason TEXT, enabled INTEGER DEFAULT 1, clone_id INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id,clone_id));
- INSERT INTO banned_users(user_id,actor_id,reason,enabled,clone_id,created_at,updated_at) SELECT user_id,actor_id,reason,enabled,0,created_at,updated_at FROM banned_users_legacy;
- DROP TABLE banned_users_legacy;`);
-}
-const rcColumns=db.prepare('PRAGMA table_info(required_channels)').all().map(x=>x.name);
-if(rcColumns.length && !rcColumns.includes('clone_id')){ db.exec('ALTER TABLE required_channels ADD COLUMN clone_id INTEGER DEFAULT 0'); }
-const banColumns=db.prepare('PRAGMA table_info(banned_users)').all().map(x=>x.name);
-if(banColumns.length && !banColumns.includes('clone_id')){ db.exec('ALTER TABLE banned_users ADD COLUMN clone_id INTEGER DEFAULT 0'); }
 module.exports = db;

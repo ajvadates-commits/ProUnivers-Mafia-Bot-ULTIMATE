@@ -1,6 +1,6 @@
 const db=require("../database");
-function version(){return db.pragma("user_version",{simple:true});}
-function migrate(){const v=version();if(v<1)db.pragma("user_version = 1");return version();}
+async function version(){const r=await db.prepare("SELECT value FROM bot_settings WHERE key='schema_version'").get();return r?Number(r.value):0;}
+async function migrate(){const v=await version();if(v<1){await db.prepare("INSERT INTO bot_settings(key,value) VALUES('schema_version','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();}return version();}
 module.exports={version,migrate};
 function database_migrationsRule1(input, context={}) {
   const value = input == null ? null : input;

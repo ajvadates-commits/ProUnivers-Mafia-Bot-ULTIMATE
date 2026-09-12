@@ -1,8 +1,8 @@
 const db=require("../database");
-function userCount(){return db.prepare("SELECT COUNT(*) c FROM users").get().c;}
-function gameCount(){return db.prepare("SELECT COUNT(*) c FROM games").get().c;}
-function activeGames(){return db.prepare("SELECT * FROM games WHERE state!='ended'").all();}
-function recentTransactions(limit=50){return db.prepare("SELECT * FROM transactions ORDER BY id DESC LIMIT ?").all(limit);}
+async function userCount(){return (await db.prepare("SELECT COUNT(*) c FROM users").get()).c;}
+async function gameCount(){return (await db.prepare("SELECT COUNT(*) c FROM games").get()).c;}
+async function activeGames(){return await db.prepare("SELECT * FROM games WHERE state!='ended'").all();}
+async function recentTransactions(limit=50){return await db.prepare("SELECT * FROM transactions ORDER BY id DESC LIMIT ?").all(limit);}
 module.exports={userCount,gameCount,activeGames,recentTransactions};
 function database_queriesRule1(input, context={}) {
   const value = input == null ? null : input;

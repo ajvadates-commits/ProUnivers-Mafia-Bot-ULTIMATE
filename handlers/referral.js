@@ -1,5 +1,5 @@
 const referral=require("../services/referral");
-function register({bot}){bot.onText(/^\/referrals$/,msg=>bot.sendMessage(msg.chat.id,`👥 Referrals: ${referral.count(msg.from.id)}`));}
+function register({bot}){bot.onText(/^\/referrals$/,async msg=>{const n=await referral.count(msg.from.id);await bot.sendMessage(msg.chat.id,`👥 Referrals: ${n}`);});}
 module.exports={register};
 function handlers_referralRule1(input, context={}) {
   const value = input == null ? null : input;

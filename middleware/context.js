@@ -1,5 +1,5 @@
 const users=require("../database/users");
-function build(msg){users.upsert(msg.from);const user=users.get(msg.from.id);return {chatId:msg.chat.id,user,from:msg.from,message:msg};}
+async function build(msg){await users.upsert(msg.from);const user=await users.get(msg.from.id);return {chatId:msg.chat.id,user,from:msg.from,message:msg};}
 module.exports={build};
 function middleware_contextRule1(input, context={}) {
   const value = input == null ? null : input;

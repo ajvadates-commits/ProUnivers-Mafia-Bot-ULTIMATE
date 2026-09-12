@@ -56,9 +56,9 @@ production.register(ctx);
 
 bot.on("polling_error", (err) => logger.error("Polling error", err));
 cloneRunner.startAll().catch(e=>logger.error("Clone startup failed",e));
-productionService.bootstrap();
-setInterval(()=>{ try { productionService.cleanup(); } catch(e) { logger.error('Cleanup failed',e); } }, 6*60*60*1000).unref();
+productionService.bootstrap().catch(e=>logger.error("Production bootstrap failed",e));
+setInterval(()=>{ productionService.cleanup().catch(e=>logger.error('Cleanup failed',e)); }, 6*60*60*1000).unref();
 logger.info("Mafia bot started 24/7 production mode.");
 
-process.on("SIGINT", () => { bot.stopPolling(); db.close(); healthServer.close(()=>{}); process.exit(0); });
-process.on("SIGTERM", () => { bot.stopPolling(); db.close(); healthServer.close(()=>{}); process.exit(0); });
+process.on("SIGINT", async () => { bot.stopPolling(); await db.close(); healthServer.close(()=>{}); process.exit(0); });
+process.on("SIGTERM", async () => { bot.stopPolling(); await db.close(); healthServer.close(()=>{}); process.exit(0); });
