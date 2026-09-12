@@ -9,10 +9,7 @@ const REQUIRED=[
   ["can_change_info","✏️ Guruh ma’lumotini o‘zgartirish"],
   ["can_invite_users","👥 User taklif qilish"],
   ["can_pin_messages","📌 Xabar pin qilish"],
-  ["can_manage_topics","🧵 Topic boshqarish"],
-  ["can_post_stories","📖 Story joylash"],
-  ["can_edit_stories","✏️ Story tahrirlash"],
-  ["can_delete_stories","🗑 Story o‘chirish"]
+  ["can_manage_topics","🧵 Topic boshqarish"]
 ];
 async function check(bot,chatId){
   const me=await bot.getMe();
