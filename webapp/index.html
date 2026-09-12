@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
+<title>🎭 Top Mafia — Profil</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--card2:#273449;--gold:#fbbf24;--txt:#e2e8f0;--dim:#94a3b8;--green:#34d399;--red:#f87171;--accent:#38bdf8;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;padding:16px 14px 110px;}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.top h1{font-size:19px;font-weight:700;letter-spacing:.2px;}
+.badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+.badge.live{background:rgba(52,211,153,.15);color:var(--green);}
+.badge.demo{background:rgba(56,189,248,.15);color:var(--accent);}
+.card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
+.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;flex:none;}
+.row{display:flex;align-items:center;gap:14px;}
+.name{font-size:18px;font-weight:700;}
+.lvl{margin-top:2px;font-size:13px;color:var(--gold);}
+.hand{font-size:12px;color:var(--dim);margin-top:3px;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.kpi{background:var(--card2);border-radius:14px;padding:12px 8px;text-align:center;}
+.kpi .v{font-size:20px;font-weight:800;}
+.kpi .l{font-size:11px;color:var(--dim);margin-top:2px;}
+.kpi.gold .v{color:var(--gold);}
+.kpi.green .v{color:var(--green);}
+.kpi.red .v{color:var(--red);}
+.sec{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 8px;}
+.bar{height:8px;border-radius:999px;background:#334155;overflow:hidden;margin:6px 0 4px;}
+.bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#fbbf24,#f59e0b);}
+.pbtn{position:fixed;left:14px;right:14px;bottom:18px;display:flex;gap:10px;}
+.pbtn a{flex:1;text-align:center;padding:14px;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;color:#0f172a;background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 6px 16px rgba(245,158,11,.35);}
+.pbtn a.ghost{background:#1e293b;color:var(--txt);border:1px solid #334155;box-shadow:none;}
+.demo-note{background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);color:#bae6fd;font-size:12px;padding:10px 12px;border-radius:12px;margin-bottom:14px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="top"><h1>🎭 Top Mafia</h1><span class="badge demo" id="mode">LOCAL</span></div>
+<div class="card row" id="pfRow">
+  <div class="avatar" id="pfAvatar">🎩</div>
+  <div>
+    <div class="name" id="pfName">Demo user</div>
+    <div class="lvl">🏆 Daraja <span id="pfLevel">1</span> · ⭐ <span id="pfXp">0</span> XP</div>
+    <div class="hand" id="pfHandle">🆔 123456789</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="kpi gold"><div class="v" id="kCoins">0</div><div class="l">🪙 Coin</div></div>
+  <div class="kpi"><div class="v" id="kGames">0</div><div class="l">🎮 O'yin</div></div>
+  <div class="kpi green"><div class="v" id="kWins">0</div><div class="l">✅ G'alaba</div></div>
+</div>
+
+<div class="sec">Statistika</div>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:var(--dim)">📈 G'alaba nisbati</span><span style="font-size:13px;color:var(--gold)" id="winRate">0%</span></div>
+  <div class="bar"><i id="winBar" style="width:0%"></i></div>
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-top:8px;">
+    <span>❌ Yo'qotish: <b id="lLosses" style="color:var(--red)">0</b></span>
+    <span>👥 Referral: <b id="lRefs" style="color:var(--accent)">0</b></span>
+  </div>
+</div>
+
+<div class="sec">Tezkor</div>
+<div class="grid" style="grid-template-columns:1fr 1fr;">
+  <div class="kpi"><div class="v" id="qStars">0</div><div class="l">⭐ Stars</div></div>
+  <div class="kpi"><div class="v" id="qVip">—</div><div class="l">💎 VIP</div></div>
+</div>
+
+<div class="pbtn">
+  <a href="https://t.me/topmafia_uzbot" target="_blank">🤝 Botga o'tish</a>
+  <a class="ghost" href="https://t.me/topmafia_uzbot" target="_blank">🎮 /mafia</a>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
