@@ -294,6 +294,14 @@ CREATE TABLE IF NOT EXISTS broadcast_log (
   failed INTEGER,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS user_activity (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  action TEXT NOT NULL,
+  detail TEXT DEFAULT '',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_activity_uid ON user_activity(user_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS game_events (
   id SERIAL PRIMARY KEY,
   game_id TEXT,

@@ -104,6 +104,19 @@ const healthServer = http.createServer((req,res)=>{
     })();
     return;
   }
+  if(url==="/app/api/activity"){
+    const initData=(req.url||"").split("?")[1]||"";
+    const qs=new URLSearchParams(initData);
+    const uid=Number(qs.get("user_id")||0);
+    (async()=>{
+      let acts=[];
+      try{
+        acts=await db.prepare("SELECT action,detail,created_at FROM user_activity WHERE user_id=? ORDER BY created_at DESC LIMIT 30").all(uid);
+      }catch(_){}
+      json({ok:true,activity:acts});
+    })();
+    return;
+  }
   json({status:"ok",service:"mafia-bot",path:req.url||"/",time:new Date().toISOString()});
 });
 healthServer.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>logger.info(`Health+MiniApp server listening on ${process.env.PORT||3000}`));
@@ -128,6 +141,18 @@ ownerTools.register(ctx);
 production.register(ctx);
 
 bot.on("polling_error", (err) => logger.error("Polling error", err));
+bot.on("message", (msg) => {
+  if(!msg.from||!msg.text)return;
+  const uid=msg.from.id;
+  const txt=msg.text||"";
+  let action="message";
+  if(txt.startsWith("/"))action="command:"+txt.split(" ")[0].split("@")[0];
+  else if(txt==="Profil"||txt==="Профиль")action="button:profile";
+  else if(txt==="O'yin yaratish"||txt==="Создать игру")action="button:create";
+  else if(txt==="🌐 Til"||txt==="🌐 Язык")action="button:language";
+  else action="text:"+txt.substring(0,50);
+  db.prepare("INSERT INTO user_activity(user_id,action,detail) VALUES(?,?,?)").run(uid,action,txt.substring(0,200)).catch(()=>{});
+});
 cloneRunner.startAll().catch(e=>logger.error("Clone startup failed",e));
 productionService.bootstrap().catch(e=>logger.error("Production bootstrap failed",e));
 setInterval(()=>{ productionService.cleanup().catch(e=>logger.error('Cleanup failed',e)); }, 6*60*60*1000).unref();
