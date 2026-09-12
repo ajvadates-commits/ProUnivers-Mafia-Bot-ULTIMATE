@@ -2,75 +2,92 @@
 <html lang="uz">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
-<title>🎭 Top Mafia — Profil</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"/>
+<title>Top Mafia</title>
 <style>
-:root{--bg:#0f172a;--card:#1e293b;--card2:#273449;--gold:#fbbf24;--txt:#e2e8f0;--dim:#94a3b8;--green:#34d399;--red:#f87171;--accent:#38bdf8;}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;padding:16px 14px 110px;}
-.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.top h1{font-size:19px;font-weight:700;letter-spacing:.2px;}
-.badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;}
-.badge.live{background:rgba(52,211,153,.15);color:var(--green);}
-.badge.demo{background:rgba(56,189,248,.15);color:var(--accent);}
-.card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
-.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;flex:none;}
-.row{display:flex;align-items:center;gap:14px;}
-.name{font-size:18px;font-weight:700;}
-.lvl{margin-top:2px;font-size:13px;color:var(--gold);}
-.hand{font-size:12px;color:var(--dim);margin-top:3px;}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.kpi{background:var(--card2);border-radius:14px;padding:12px 8px;text-align:center;}
-.kpi .v{font-size:20px;font-weight:800;}
-.kpi .l{font-size:11px;color:var(--dim);margin-top:2px;}
-.kpi.gold .v{color:var(--gold);}
-.kpi.green .v{color:var(--green);}
-.kpi.red .v{color:var(--red);}
-.sec{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 8px;}
-.bar{height:8px;border-radius:999px;background:#334155;overflow:hidden;margin:6px 0 4px;}
-.bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#fbbf24,#f59e0b);}
-.pbtn{position:fixed;left:14px;right:14px;bottom:18px;display:flex;gap:10px;}
-.pbtn a{flex:1;text-align:center;padding:14px;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;color:#0f172a;background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 6px 16px rgba(245,158,11,.35);}
-.pbtn a.ghost{background:#1e293b;color:var(--txt);border:1px solid #334155;box-shadow:none;}
-.demo-note{background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);color:#bae6fd;font-size:12px;padding:10px 12px;border-radius:12px;margin-bottom:14px;line-height:1.5;}
+:root{--bg:#0a0e1a;--card:#111827;--border:#1f2937;--txt:#f1f5f9;--dim:#6b7280;--gold:#f59e0b;--green:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;padding:0;padding-bottom:70px;min-height:100vh;-webkit-font-smoothing:antialiased}
+.safe{padding:env(safe-area-inset-top) 16px 0}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
+.hdr h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.badge.live{background:rgba(16,185,129,.15);color:var(--green)}
+.badge.demo{background:rgba(107,114,128,.2);color:var(--dim)}
+.profile{display:flex;align-items:center;gap:14px;padding:0 16px;margin-bottom:16px}
+.avatar{width:56px;height:56px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex:none}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.info .n{font-size:16px;font-weight:600}
+.info .u{font-size:13px;color:var(--dim);margin-top:1px}
+.info .l{font-size:12px;color:var(--gold);margin-top:2px;font-weight:500}
+.xpbar{height:6px;border-radius:3px;background:var(--border);margin-top:8px;overflow:hidden}
+.xpbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),#f97316);transition:width .6s}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+.kpi .v{font-size:18px;font-weight:700}
+.kpi .l{font-size:11px;color:var(--dim);margin-top:2px}
+.tabs{display:flex;gap:0;padding:0 16px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.tab{flex:1;text-align:center;padding:10px 0;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.content{padding:0 16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border:none}
+.row .rank{width:24px;font-size:14px;font-weight:700;text-align:center}
+.row .rank.g{color:var(--gold)}
+.row .rank.s{color:#c0c0c0}
+.row .rank.b{color:#cd7f32}
+.row .ava{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex:none}
+.row .ava img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.row .nm{flex:1;font-size:13px;font-weight:500}
+.row .nm small{display:block;font-size:11px;color:var(--dim);font-weight:400}
+.row .pts{font-size:13px;font-weight:700;color:var(--gold)}
+.empty{text-align:center;padding:32px 16px;color:var(--dim);font-size:13px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;padding:8px 0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.nav a{flex:1;text-align:center;text-decoration:none;color:var(--dim);font-size:11px;font-weight:500;padding:4px 0}
+.nav a.active{color:var(--gold)}
+.nav a .ic{font-size:20px;display:block;margin-bottom:2px}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.stat-row:last-child{border:none}
+.stat-row .k{color:var(--dim)}
+.stat-row .v{font-weight:600}
+.leader{position:relative}
+.leader .crown{position:absolute;top:-2px;right:8px;font-size:14px}
 </style>
 </head>
 <body>
-<div class="top"><h1>🎭 Top Mafia</h1><span class="badge demo" id="mode">LOCAL</span></div>
-<div class="card row" id="pfRow">
-  <div class="avatar" id="pfAvatar">🎩</div>
-  <div>
-    <div class="name" id="pfName">Demo user</div>
-    <div class="lvl">🏆 Daraja <span id="pfLevel">1</span> · ⭐ <span id="pfXp">0</span> XP</div>
-    <div class="hand" id="pfHandle">🆔 123456789</div>
+<div class="safe">
+<div class="hdr"><h1>🎭 Top Mafia</h1><span class="badge demo" id="mode">DEMO</span></div>
+
+<div class="profile">
+  <div class="avatar" id="av">M</div>
+  <div class="info" style="flex:1">
+    <div class="n" id="nm">Mafia o'yinchi</div>
+    <div class="u" id="un">@username</div>
+    <div class="l" id="lv">🏆 Daraja 1</div>
+    <div class="xpbar"><i id="xp" style="width:0%"></i></div>
   </div>
 </div>
 
 <div class="grid">
-  <div class="kpi gold"><div class="v" id="kCoins">0</div><div class="l">🪙 Coin</div></div>
-  <div class="kpi"><div class="v" id="kGames">0</div><div class="l">🎮 O'yin</div></div>
-  <div class="kpi green"><div class="v" id="kWins">0</div><div class="l">✅ G'alaba</div></div>
+  <div class="kpi"><div class="v" id="k1" style="color:var(--gold)">0</div><div class="l">🪙 Coin</div></div>
+  <div class="kpi"><div class="v" id="k2">0</div><div class="l">🎮 O'yin</div></div>
+  <div class="kpi"><div class="v" id="k3" style="color:var(--green)">0</div><div class="l">✅ G'alaba</div></div>
 </div>
 
-<div class="sec">Statistika</div>
-<div class="card">
-  <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:var(--dim)">📈 G'alaba nisbati</span><span style="font-size:13px;color:var(--gold)" id="winRate">0%</span></div>
-  <div class="bar"><i id="winBar" style="width:0%"></i></div>
-  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-top:8px;">
-    <span>❌ Yo'qotish: <b id="lLosses" style="color:var(--red)">0</b></span>
-    <span>👥 Referral: <b id="lRefs" style="color:var(--accent)">0</b></span>
-  </div>
+<div class="tabs">
+  <div class="tab active" data-t="profile">Profil</div>
+  <div class="tab" data-t="groups">Guruhlar</div>
+  <div class="tab" data-t="top">Reyting</div>
 </div>
 
-<div class="sec">Tezkor</div>
-<div class="grid" style="grid-template-columns:1fr 1fr;">
-  <div class="kpi"><div class="v" id="qStars">0</div><div class="l">⭐ Stars</div></div>
-  <div class="kpi"><div class="v" id="qVip">—</div><div class="l">💎 VIP</div></div>
+<div class="content" id="ct"></div>
 </div>
 
-<div class="pbtn">
-  <a href="https://t.me/topmafia_uzbot" target="_blank">🤝 Botga o'tish</a>
-  <a class="ghost" href="https://t.me/topmafia_uzbot" target="_blank">🎮 /mafia</a>
+<div class="nav">
+  <a href="#" class="active"><span class="ic">👤</span>Profil</a>
+  <a href="https://t.me/topmafia_uzbot"><span class="ic">🎮</span>O'ynash</a>
+  <a href="https://t.me/topmafia_uzbot" onclick="Telegram.WebApp.close()"><span class="ic">✕</span>Yopish</a>
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>

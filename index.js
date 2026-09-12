@@ -46,7 +46,9 @@ function tgVerify(initData){
   }catch(_){return null;}
 }
 function serveWebapp(req,res,url){
-  let p=url==="/app"?"/app/index.html":url;
+  let p=url;
+  if(url==="/"||url==="/app"||url==="/app/")p="/app/index.html";
+  if(url==="/app.js")p="/app/app.js";
   const f=path.join(WEBAPP_DIR,p.replace(/^\/?app\/?/,""));
   if(!f.startsWith(WEBAPP_DIR)){res.writeHead(403);return res.end("403");}
   fs.readFile(f,(err,body)=>{
@@ -57,7 +59,7 @@ function serveWebapp(req,res,url){
 const healthServer = http.createServer((req,res)=>{
   const url=(req.url||"/").split("?")[0];
   const json=(obj)=>{res.writeHead(200,{"Content-Type":"application/json"});res.end(JSON.stringify(obj));};
-  if(url==="/app"||url==="/app/"||url==="/app/app.js"||url==="/app/index.html")return serveWebapp(req,res,url);
+  if(url==="/"||url==="/app"||url==="/app/"||url==="/app.js"||url==="/app/app.js"||url==="/app/index.html")return serveWebapp(req,res,url);
   if(url==="/app/api/profile"){
     const initData=(req.url||"").split("?")[1]||"";
     const qs=new URLSearchParams(initData);
@@ -76,6 +78,29 @@ const healthServer = http.createServer((req,res)=>{
       };
       try{await db.prepare("INSERT INTO users(id,username,first_name,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET username=excluded.username,first_name=excluded.first_name,updated_at=CURRENT_TIMESTAMP").run(Number(id),u.username,u.first_name);}catch(_){}
       json({ok:true,user:u});
+    })();
+    return;
+  }
+  if(url==="/app/api/groups"){
+    const initData=(req.url||"").split("?")[1]||"";
+    const qs=new URLSearchParams(initData);
+    const uid=Number(qs.get("user_id")||0);
+    (async()=>{
+      let groups=[];
+      try{
+        groups=await db.prepare(`SELECT g.id,g.title,g.games as total_games,COUNT(DISTINCT gp.game_id) as user_games FROM game_players gp JOIN games gm ON gp.game_id=gm.id JOIN "groups" g ON gm.chat_id=g.id WHERE gp.user_id=? GROUP BY g.id ORDER BY user_games DESC LIMIT 20`).all(uid);
+      }catch(_){}
+      json({ok:true,groups:groups});
+    })();
+    return;
+  }
+  if(url==="/app/api/leaderboard"){
+    (async()=>{
+      let top=[];
+      try{
+        top=await db.prepare("SELECT id,first_name,username,wins,level,xp,games FROM users ORDER BY wins DESC,xp DESC LIMIT 50").all();
+      }catch(_){}
+      json({ok:true,top:top});
     })();
     return;
   }

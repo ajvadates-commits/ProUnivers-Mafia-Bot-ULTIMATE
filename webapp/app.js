@@ -1,76 +1,59 @@
 (()=>{
-  const $=id=>document.getElementById(id);
-  const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":String(n);
-  const root=location.pathname.replace(/app\/?$/,"");
-  let me=null;
-  if(window.Telegram&&window.Telegram.WebApp){
-    try{
-      me=window.Telegram.WebApp.initDataUnsafe.user||null;
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-      if(window.Telegram.WebApp.setHeaderColor)window.Telegram.WebApp.setHeaderColor("#0f172a");
-      if(window.Telegram.WebApp.setBackgroundColor)window.Telegram.WebApp.setBackgroundColor("#0f172a");
-    }catch(_){me=null;}
-  }
-  const D={
-    name:"Ali Valiyev",handle:"@topmafia_uzbot",photo:null,language:"uz",
-    level:12,xp:3480,xpNeeded:4200,coins:12850,stars:124,
-    games:132,wins:81,losses:47,winRate:61,
-    gamesByRole:{mafia:52,citizen:44,detective:20,doctor:16},
-    winsByRole:{mafia:33,citizen:27,detective:12,doctor:9},
-    mmr:1680,tier:"Oltin",vip:true,pro:false,clones:3,refs:12,
-    lastSeen:"2 soat oldin",xpNext:720
-  };
-  async function boot(){
-    let u=D;
-    // Haqiqiy Telegram'da bo‘lsa — serverdan tasdiqlangan profilni olamiz
-    if(me&&window.Telegram&&window.Telegram.WebApp.initData){
-      try{
-        const r=await fetch("/app/api/profile?id="+me.id+"&initData="+encodeURIComponent(window.Telegram.WebApp.initData));
-        const j=await r.json(); if(j&&j.ok&&j.user)u=Object.assign({},D,j.user);
-      }catch(_){}
-    }
-    render(u);
-    if(me){const n=document.getElementById("mode");if(n){n.textContent="LIVE";n.classList.remove("demo");n.classList.add("live");}}
-    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.ready)window.Telegram.WebApp.ready();
-  }
-  function render(u){
-    const set=(id,val)=>$(id).textContent=val;
-    const av=$("pfAvatar");
-    if(av&&u.photo_url){
-      av.classList.add("has-photo");
-      av.textContent="";
-      const img=document.createElement("img");
-      img.src=u.photo_url;img.alt="";img.onerror=()=>{av.classList.remove("has-photo");av.textContent=(u.first_name||u.name||"M").charAt(0).toUpperCase();};
-      av.appendChild(img);
-    }else{
-      av.classList.remove("has-photo");
-      set("pfAvatar",(u.first_name||u.name||"M").charAt(0).toUpperCase());
-    }
-    set("pfName",u.first_name||u.name||"Mafia o‘yinchi");
-    set("pfHandle",u.username?("@"+u.username):("#"+u.id));
-    set("pfLevel",u.level);set("pfXp",fmt(u.xp));
-    set("kCoins",fmt(u.coins));
-    set("kStars",fmt(u.stars));
-    set("kGames",fmt(u.games));set("kRatio",u.winRate+"%");
-    set("wBar",u.winRate+"%");
-    set("wBarVal",u.winRate+"%");
-    set("gWin",fmt(u.wins));set("gLoss",fmt(u.losses));
-    set("gMafia",fmt(u.gamesByRole.mafia));set("gCitizen",fmt(u.gamesByRole.citizen));
-    set("gDet",fmt(u.gamesByRole.detective));set("gDoc",fmt(u.gamesByRole.doctor));
-    set("rMafia",fmt(u.winsByRole.mafia));set("rCitizen",fmt(u.winsByRole.citizen));
-    set("rDet",fmt(u.winsByRole.detective));set("rDoc",fmt(u.winsByRole.doctor));
-    set("qLevel",u.level+"-daraja");
-    set("qTier",u.tier||"Bronza");
-    set("qMmr",u.mmr);
-    set("qVip",$(u.vip)?"VIP":"—");
-    set("qCoin",fmt(u.coins));
-    set("qStars",fmt(u.stars));
-    set("qClones",u.clones);
-    set("qRefs",u.refs);
-    set("qlLevel",fmt(u.xp)+" / "+fmt(u.xpNeeded));
-    const xpbar=document.getElementById("xpbar");if(xpbar){const p=Math.min(100,Math.round((u.xp/u.xpNeeded)*100));xpbar.style.width=p+"%";}
-    document.body.classList.add("loaded");
-  }
-  boot();
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":String(n);
+let me=null,D={},activeTab="profile";
+if(window.Telegram&&window.Telegram.WebApp){
+  try{me=Telegram.WebApp.initDataUnsafe.user||null;Telegram.WebApp.ready();Telegram.WebApp.expand();
+  if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#0a0e1a");
+  if(Telegram.WebApp.setBackgroundColor)Telegram.WebApp.setBackgroundColor("#0a0e1a");
+  }catch(_){}
+}
+const API="/app/api";
+const tabs=document.querySelectorAll(".tab");
+tabs.forEach(t=>t.addEventListener("click",()=>{activeTab=t.dataset.t;tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");renderTab();}));
+function renderProfile(u){
+  const av=$("av");
+  if(u.photo_url){av.innerHTML="<img src='"+u.photo_url+"' onerror='this.parentNode.textContent=\""+(u.first_name||"M").charAt(0).toUpperCase()+"\"'>";}else{av.textContent=(u.first_name||"M").charAt(0).toUpperCase();}
+  $("nm").textContent=u.first_name||"O'yinchi";
+  $("un").textContent=u.username?"@"+u.username:"#"+u.id;
+  $("lv").textContent="🏆 Daraja "+(u.level||1);
+  const pct=Math.min(100,Math.round(((u.xp||0)/((u.level||1)*100))*100));
+  $("xp").style.width=pct+"%";
+  $("k1").textContent=fmt(u.coins||0);
+  $("k2").textContent=fmt(u.games||0);
+  $("k3").textContent=fmt(u.wins||0);
+  if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live";}
+  return "<div class='card'><div class='stat-row'><span class='k'>💰 Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div><div class='stat-row'><span class='k'>💎 Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div><div class='stat-row'><span class='k'>📊 G'alaba nisbati</span><span class='v'>"+(u.winRate||0)+"%</span></div><div class='stat-row'><span class='k'>❌ Yo'qotish</span><span class='v'>"+fmt(u.losses||0)+"</span></div><div class='stat-row'><span class='k'>⭐ XP</span><span class='v'>"+fmt(u.xp||0)+" / "+fmt((u.level||1)*100)+"</span></div><div class='stat-row'><span class='k'>🏆 Daraja</span><span class='v'>"+(u.level||1)+"</span></div></div>";
+}
+function renderGroups(groups){
+  if(!groups||!groups.length) return "<div class='empty'>🏷 Hali guruhlarda o'ynalmagan<br><small>Birinchi o'yinni boshlang!</small></div>";
+  return groups.map(g=>"<div class='card'><div class='row'><div class='ava'>🏷</div><div class='nm'>"+g.title+"<small>"+fmt(g.user_games)+" ta o'yin</small></div><div class='pts'>"+fmt(g.total_games)+"</div></div></div>").join("");
+}
+function renderTop(list){
+  if(!list||!list.length) return "<div class='empty'>🏆 Reyting hali shakllanmagan</div>";
+  return list.map((u,i)=>{
+    const rc=i===0?"g":i===1?"s":i===2?"b":"";
+    const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+    const ph=u.photo_url?"<img src='"+u.photo_url+"'>":(u.first_name||"M").charAt(0).toUpperCase();
+    return "<div class='card'><div class='row'><div class='rank "+rc+"'>"+medal+"</div><div class='ava'>"+ph+"</div><div class='nm'>"+(u.first_name||"O'yinchi")+"<small>"+fmt(u.wins||0)+" g'alaba · Lv."+fmt(u.level||1)+"</small></div><div class='pts'>"+fmt(u.wins||0)+"</div></div></div>";
+  }).join("");
+}
+function renderTab(){
+  const ct=$("ct");
+  if(activeTab==="profile"){ct.innerHTML=D._profile||"<div class='empty'>Yuklanmoqda...</div>";}
+  else if(activeTab==="groups"){ct.innerHTML=D._groups||"<div class='empty'>Yuklanmoqda...</div>";}
+  else if(activeTab==="top"){ct.innerHTML=D._top||"<div class='empty'>Yuklanmoqda...</div>";}
+}
+async function boot(){
+  const uid=me?me.id:0;
+  const idp=me&&Telegram.WebApp.initData?Telegram.WebApp.initData:"";
+  const base={first_name:"Demo o'yinchi",username:"topmafia_uzbot",photo_url:null,level:1,xp:0,coins:0,games:0,wins:0,losses:0,winRate:0,diamonds:0};
+  let u=base;
+  try{const r=await fetch(API+"/profile?id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();if(j.ok&&j.user)u=Object.assign({},base,j.user);}catch(_){}
+  D._profile=renderProfile(u);
+  try{const r=await fetch(API+"/groups?user_id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();D._groups=renderGroups(j.groups||[]);}catch(_){D._groups=renderGroups([]);}
+  try{const r=await fetch(API+"/leaderboard");const j=await r.json();D._top=renderTop(j.top||[]);}catch(_){D._top=renderTop([]);}
+  renderTab();
+}
+boot();
 })();
