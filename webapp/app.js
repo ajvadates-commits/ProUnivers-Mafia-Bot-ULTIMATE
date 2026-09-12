@@ -4,45 +4,67 @@ const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":String(
 let me=null,D={},activeTab="profile";
 if(window.Telegram&&window.Telegram.WebApp){
   try{me=Telegram.WebApp.initDataUnsafe.user||null;Telegram.WebApp.ready();Telegram.WebApp.expand();
-  if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#0a0e1a");
-  if(Telegram.WebApp.setBackgroundColor)Telegram.WebApp.setBackgroundColor("#0a0e1a");
+  if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#06060f");
+  if(Telegram.WebApp.setBackgroundColor)Telegram.WebApp.setBackgroundColor("#06060f");
   }catch(_){}
 }
 const API="/app/api";
-const tabs=document.querySelectorAll(".tab");
-tabs.forEach(t=>t.addEventListener("click",()=>{activeTab=t.dataset.t;tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");renderTab();}));
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  activeTab=t.dataset.t;
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  renderTab();
+}));
 function renderProfile(u){
   const av=$("av");
   if(u.photo_url){av.innerHTML="<img src='"+u.photo_url+"' onerror='this.parentNode.textContent=\""+(u.first_name||"M").charAt(0).toUpperCase()+"\"'>";}else{av.textContent=(u.first_name||"M").charAt(0).toUpperCase();}
   $("nm").textContent=u.first_name||"O'yinchi";
   $("un").textContent=u.username?"@"+u.username:"#"+u.id;
-  $("lv").textContent="🏆 Daraja "+(u.level||1);
+  $("lv").textContent="Daraja "+(u.level||1);
   const pct=Math.min(100,Math.round(((u.xp||0)/((u.level||1)*100))*100));
   $("xp").style.width=pct+"%";
   $("k1").textContent=fmt(u.coins||0);
   $("k2").textContent=fmt(u.games||0);
   $("k3").textContent=fmt(u.wins||0);
   if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live";}
-  return "<div class='card'><div class='stat-row'><span class='k'>💰 Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div><div class='stat-row'><span class='k'>💎 Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div><div class='stat-row'><span class='k'>📊 G'alaba nisbati</span><span class='v'>"+(u.winRate||0)+"%</span></div><div class='stat-row'><span class='k'>❌ Yo'qotish</span><span class='v'>"+fmt(u.losses||0)+"</span></div><div class='stat-row'><span class='k'>⭐ XP</span><span class='v'>"+fmt(u.xp||0)+" / "+fmt((u.level||1)*100)+"</span></div><div class='stat-row'><span class='k'>🏆 Daraja</span><span class='v'>"+(u.level||1)+"</span></div></div>";
+  return "<div class='anim-tab'><div class='card'><div class='inner'>"+
+    "<div class='stat-row'><span class='k'>Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>G'alaba nisbati</span><span class='v'>"+(u.winRate||0)+"%</span></div>"+
+    "<div class='stat-row'><span class='k'>Yo'qotish</span><span class='v'>"+fmt(u.losses||0)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>XP</span><span class='v'>"+fmt(u.xp||0)+" / "+fmt((u.level||1)*100)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>Daraja</span><span class='v'>"+(u.level||1)+"</span></div>"+
+    "</div></div></div>";
 }
 function renderGroups(groups){
-  if(!groups||!groups.length) return "<div class='empty'>🏷 Hali guruhlarda o'ynalmagan<br><small>Birinchi o'yinni boshlang!</small></div>";
-  return groups.map(g=>"<div class='card'><div class='row'><div class='ava'>🏷</div><div class='nm'>"+g.title+"<small>"+fmt(g.user_games)+" ta o'yin</small></div><div class='pts'>"+fmt(g.total_games)+"</div></div></div>").join("");
+  if(!groups||!groups.length) return "<div class='anim-tab'><div class='empty'><div class='ico'>&#9670;</div>Hali guruhlarda o'ynalmagan<br>Birinchi o'yinni boshlang</div></div>";
+  return "<div class='anim-tab'>"+groups.map(g=>
+    "<div class='card'><div class='row'>"+
+    "<div class='rAVA'>"+g.title.charAt(0).toUpperCase()+"</div>"+
+    "<div class='nm'>"+g.title+"<small>"+fmt(g.user_games)+" ta o'yin</small></div>"+
+    "<div class='pts'>"+fmt(g.total_games)+"</div>"+
+    "</div></div>"
+  ).join("")+"</div>";
 }
 function renderTop(list){
-  if(!list||!list.length) return "<div class='empty'>🏆 Reyting hali shakllanmagan</div>";
-  return list.map((u,i)=>{
+  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico'>&#9733;</div>Reyting hali shakllanmagan</div></div>";
+  return "<div class='anim-tab'>"+list.map((u,i)=>{
     const rc=i===0?"g":i===1?"s":i===2?"b":"";
-    const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+    const medal=i===0?"&#9733;":i===1?"&#9734;":i===2?"&#9830;":(i+1);
     const ph=u.photo_url?"<img src='"+u.photo_url+"'>":(u.first_name||"M").charAt(0).toUpperCase();
-    return "<div class='card'><div class='row'><div class='rank "+rc+"'>"+medal+"</div><div class='ava'>"+ph+"</div><div class='nm'>"+(u.first_name||"O'yinchi")+"<small>"+fmt(u.wins||0)+" g'alaba · Lv."+fmt(u.level||1)+"</small></div><div class='pts'>"+fmt(u.wins||0)+"</div></div></div>";
-  }).join("");
+    return "<div class='card'><div class='row'>"+
+      "<div class='rank "+rc+"'>"+medal+"</div>"+
+      "<div class='rAVA"+(i<3?" gold":"")+"'>"+ph+"</div>"+
+      "<div class='nm'>"+(u.first_name||"O'yinchi")+"<small>"+fmt(u.wins||0)+" g'alaba · Lv."+fmt(u.level||1)+"</small></div>"+
+      "<div class='pts"+(i===0?" gold":"")+"'>"+fmt(u.wins||0)+"</div>"+
+      "</div></div>";
+  }).join("")+"</div>";
 }
 function renderTab(){
   const ct=$("ct");
-  if(activeTab==="profile"){ct.innerHTML=D._profile||"<div class='empty'>Yuklanmoqda...</div>";}
-  else if(activeTab==="groups"){ct.innerHTML=D._groups||"<div class='empty'>Yuklanmoqda...</div>";}
-  else if(activeTab==="top"){ct.innerHTML=D._top||"<div class='empty'>Yuklanmoqda...</div>";}
+  if(activeTab==="profile")ct.innerHTML=D._profile||"<div class='anim-tab shimmer' style='height:200px;border-radius:14px'></div>";
+  else if(activeTab==="groups")ct.innerHTML=D._groups||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
+  else if(activeTab==="top")ct.innerHTML=D._top||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
 }
 async function boot(){
   const uid=me?me.id:0;
