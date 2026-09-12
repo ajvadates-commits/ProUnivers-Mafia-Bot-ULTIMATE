@@ -7,6 +7,7 @@ const config = {
   databaseUrl: process.env.DATABASE_URL || "",
   databasePath: process.env.DATABASE_PATH || "./data/mafia.sqlite",
   defaultLanguage: process.env.DEFAULT_LANGUAGE || "uz",
+  appUrl: process.env.APP_URL || "https://prounivers-mafia-bot-ultimate.onrender.com",
   security: {
     requireBotAdminRights: String(process.env.REQUIRE_BOT_ADMIN_RIGHTS || "true").toLowerCase() === "true",
     requireAllAdminRights: String(process.env.REQUIRE_ALL_ADMIN_RIGHTS || "true").toLowerCase() === "true"
