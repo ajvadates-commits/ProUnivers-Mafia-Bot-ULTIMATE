@@ -5,8 +5,8 @@ const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.inn
 let me=null,D={},activeTab="profile";
 if(window.Telegram&&window.Telegram.WebApp){
   try{me=Telegram.WebApp.initDataUnsafe.user||null;Telegram.WebApp.ready();Telegram.WebApp.expand();
-  if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#06060f");
-  if(Telegram.WebApp.setBackgroundColor)Telegram.WebApp.setBackgroundColor("#06060f");
+  if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#080b16");
+  if(Telegram.WebApp.setBackgroundColor)Telegram.WebApp.setBackgroundColor("#080b16");
   }catch(_){}
 }
 const API="/app/api";
