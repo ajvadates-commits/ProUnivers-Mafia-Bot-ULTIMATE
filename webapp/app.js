@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":String(n);
 const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML;};
-let me=null,D={},activeTab="profile";
+let me=null,D={},activeTab="profile",particles=[],confettis=[];
 if(window.Telegram&&window.Telegram.WebApp){
   try{me=Telegram.WebApp.initDataUnsafe.user||null;Telegram.WebApp.ready();Telegram.WebApp.expand();
   if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#080b16");
@@ -10,51 +10,142 @@ if(window.Telegram&&window.Telegram.WebApp){
   }catch(_){}
 }
 const API="/app/api";
-function countAnim(el,target,duration=800){
+
+// ===== COUNT ANIMATION =====
+function countAnim(el,target,duration=900){
   const start=performance.now();
   const from=0;
   function tick(now){
     const p=Math.min((now-start)/duration,1);
-    const ease=1-Math.pow(1-p,3);
+    const ease=1-Math.pow(1-p,4);
     el.textContent=fmt(Math.round(from+(target-from)*ease));
     if(p<1)requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
+
+// ===== STAGGER CARDS =====
 function staggerCards(container){
   const cards=container.querySelectorAll(".card");
   cards.forEach((c,i)=>{
     c.style.opacity="0";
-    c.style.transform="translateY(16px) scale(.96)";
+    c.style.transform="translateY(20px) scale(.95)";
     setTimeout(()=>{
-      c.style.transition="all .4s cubic-bezier(.4,0,.2,1)";
+      c.style.transition="all .5s cubic-bezier(.4,0,.2,1)";
       c.style.opacity="1";
       c.style.transform="translateY(0) scale(1)";
-    },60*i);
+    },70*i);
   });
 }
+
+// ===== RIPPLE =====
 function addRipple(el,e){
   const r=document.createElement("span");
-  r.style.cssText="position:absolute;border-radius:50%;background:rgba(99,102,241,.3);width:20px;height:20px;pointer-events:none;animation:ripple .6s ease-out forwards";
+  r.style.cssText="position:absolute;border-radius:50%;background:linear-gradient(135deg,rgba(99,102,241,.4),rgba(139,92,246,.2));width:20px;height:20px;pointer-events:none;animation:ripple .7s ease-out forwards;z-index:10";
   const rect=el.getBoundingClientRect();
   r.style.left=(e.clientX-rect.left-10)+"px";
   r.style.top=(e.clientY-rect.top-10)+"px";
   el.appendChild(r);
-  setTimeout(()=>r.remove(),600);
+  setTimeout(()=>r.remove(),700);
 }
+
+// ===== CONFETTI BURST =====
+function confettiBurst(x,y,count=8){
+  const colors=["#818cf8","#a78bfa","#fbbf24","#34d399","#fb7185","#60a5fa"];
+  for(let i=0;i<count;i++){
+    const c=document.createElement("div");
+    const size=Math.random()*6+3;
+    const angle=(Math.PI*2/count)*i;
+    const dist=Math.random()*60+40;
+    c.style.cssText=`position:fixed;width:${size}px;height:${size}px;background:${colors[i%colors.length]};border-radius:${Math.random()>.5?"50%":"2px"};pointer-events:none;z-index:100;left:${x}px;top:${y}px;transition:all .8s cubic-bezier(.4,0,.2,1);opacity:1`;
+    document.body.appendChild(c);
+    requestAnimationFrame(()=>{
+      c.style.transform=`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) rotate(${Math.random()*360}deg)`;
+      c.style.opacity="0";
+    });
+    setTimeout(()=>c.remove(),800);
+  }
+}
+
+// ===== CURSOR TRAIL =====
+let trailThrottle=0;
+document.addEventListener("mousemove",e=>{
+  if(Date.now()-trailThrottle<50)return;
+  trailThrottle=Date.now();
+  const t=document.createElement("div");
+  t.style.cssText=`position:fixed;width:4px;height:4px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:100;left:${e.clientX}px;top:${e.clientY}px;opacity:.5;transition:all .5s ease`;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>{
+    t.style.transform="scale(0)";
+    t.style.opacity="0";
+  });
+  setTimeout(()=>t.remove(),500);
+});
+
+// ===== TILT EFFECT =====
+function addTilt(el){
+  el.addEventListener("mousemove",e=>{
+    const rect=el.getBoundingClientRect();
+    const x=(e.clientX-rect.left)/rect.width-.5;
+    const y=(e.clientY-rect.top)/rect.height-.5;
+    el.style.transform=`perspective(500px) rotateY(${x*8}deg) rotateX(${-y*8}deg) scale(1.02)`;
+  });
+  el.addEventListener("mouseleave",()=>{
+    el.style.transform="perspective(500px) rotateY(0) rotateX(0) scale(1)";
+    el.style.transition="all .4s cubic-bezier(.4,0,.2,1)";
+  });
+  el.addEventListener("mouseenter",()=>{
+    el.style.transition="all .1s ease";
+  });
+}
+
+// ===== TAB CLICK =====
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",function(e){
   activeTab=this.dataset.t;
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
   this.classList.add("active");
   addRipple(this,e);
+  confettiBurst(e.clientX,e.clientY,5);
   renderTab();
 }));
-document.querySelectorAll(".kpi").forEach(k=>k.addEventListener("click",function(e){addRipple(this,e);}));
-document.querySelectorAll(".row").forEach(r=>r.addEventListener("mousemove",function(e){
-  const rect=this.getBoundingClientRect();
-  this.style.setProperty("--x",((e.clientX-rect.left)/rect.width*100)+"%");
-  this.style.setProperty("--y",((e.clientY-rect.top)/rect.height*100)+"%");
-}));
+
+// ===== KPI CLICK =====
+document.querySelectorAll(".kpi").forEach((k,i)=>{
+  addTilt(k);
+  k.addEventListener("click",function(e){
+    addRipple(this,e);
+    confettiBurst(e.clientX,e.clientY,6);
+    this.style.animation="none";
+    this.offsetHeight;
+    this.style.animation="jelly .5s ease";
+  });
+});
+
+// ===== ROW HOVER =====
+document.addEventListener("mousemove",e=>{
+  document.querySelectorAll(".row").forEach(r=>{
+    const rect=r.getBoundingClientRect();
+    if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){
+      r.style.setProperty("--x",((e.clientX-rect.left)/rect.width*100)+"%");
+      r.style.setProperty("--y",((e.clientY-rect.top)/rect.height*100)+"%");
+    }
+  });
+});
+
+// ===== NAV CLICK =====
+document.querySelectorAll(".nav a").forEach(a=>{
+  a.addEventListener("click",function(e){
+    if(this.getAttribute("href")==="#")e.preventDefault();
+    document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("active"));
+    this.classList.add("active");
+    addRipple(this,e);
+    this.querySelector(".ic").style.animation="none";
+    this.querySelector(".ic").offsetHeight;
+    this.querySelector(".ic").animation="bounce .5s ease";
+  });
+});
+
+// ===== PROFILE RENDER =====
 function renderProfile(u){
   const av=$("av");
   if(u.photo_url){av.innerHTML="<img src='"+esc(u.photo_url)+"' onerror='this.parentNode.textContent=\""+esc((u.first_name||"M").charAt(0).toUpperCase())+"\"'>";}else{av.textContent=(u.first_name||"M").charAt(0).toUpperCase();}
@@ -63,8 +154,8 @@ function renderProfile(u){
   $("lv").textContent="Daraja "+(u.level||1);
   const pct=Math.min(100,Math.round(((u.xp||0)/((u.level||1)*100))*100));
   $("xp").style.width=pct+"%";
-  setTimeout(()=>{countAnim($("k1"),u.coins||0);countAnim($("k2"),u.games||0);countAnim($("k3"),u.wins||0);},200);
-  if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live";}
+  setTimeout(()=>{countAnim($("k1"),u.coins||0);countAnim($("k2"),u.games||0);countAnim($("k3"),u.wins||0);},300);
+  if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live anim-pop";}
   return "<div class='anim-tab'><div class='card card-enter'><div class='inner'>"+
     "<div class='stat-row'><span class='k'>Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div>"+
     "<div class='stat-row'><span class='k'>Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div>"+
@@ -74,55 +165,64 @@ function renderProfile(u){
     "<div class='stat-row'><span class='k'>Daraja</span><span class='v'>"+(u.level||1)+"</span></div>"+
     "</div></div></div>";
 }
+
+// ===== GROUPS RENDER =====
 function renderGroups(groups){
-  if(!groups||!groups.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9670;</div>Hali guruhlarda o'ynalmagan<br>Birinchi o'yinni boshlang</div></div>";
+  if(!groups||!groups.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow anim-float'>&#9670;</div>Hali guruhlarda o'ynalmagan<br>Birinchi o'yinni boshlang</div></div>";
   const html="<div class='anim-tab'>"+groups.map((g,i)=>
-    "<div class='card card-enter' style='animation-delay:"+(i*60)+"ms'><div class='row'>"+
+    "<div class='card card-enter' style='animation-delay:"+(i*70)+"ms'><div class='row'>"+
     "<div class='rAVA'>"+esc(g.title.charAt(0).toUpperCase())+"</div>"+
     "<div class='nm'>"+esc(g.title)+"<small>"+fmt(g.user_games)+" ta o'yin</small></div>"+
     "<div class='pts'>"+fmt(g.total_games)+"</div>"+
     "</div></div>"
   ).join("")+"</div>";
-  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  setTimeout(()=>{staggerCards(document.getElementById("ct"));document.querySelectorAll(".card").forEach(addTilt);},50);
   return html;
 }
+
+// ===== TOP RENDER =====
 function renderTop(list){
-  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9733;</div>Reyting hali shakllanmagan</div></div>";
+  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow anim-float'>&#9733;</div>Reyting hali shakllanmagan</div></div>";
   const html="<div class='anim-tab'>"+list.map((u,i)=>{
     const rc=i===0?"g":i===1?"s":i===2?"b":"";
     const medal=i===0?"&#9733;":i===1?"&#9734;":i===2?"&#9830;":(i+1);
     const ph=u.photo_url?"<img src='"+esc(u.photo_url)+"'>":esc((u.first_name||"M").charAt(0).toUpperCase());
-    return "<div class='card card-enter' style='animation-delay:"+(i*50)+"ms'><div class='row'>"+
+    return "<div class='card card-enter' style='animation-delay:"+(i*60)+"ms'><div class='row'>"+
       "<div class='rank "+rc+"'>"+medal+"</div>"+
       "<div class='rAVA"+(i<3?" gold":"")+"'>"+ph+"</div>"+
       "<div class='nm'>"+esc(u.first_name||"O'yinchi")+"<small>"+fmt(u.wins||0)+" g'alaba · Lv."+fmt(u.level||1)+"</small></div>"+
       "<div class='pts"+(i===0?" gold":"")+"'>"+fmt(u.wins||0)+"</div>"+
       "</div></div>";
   }).join("")+"</div>";
-  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  setTimeout(()=>{staggerCards(document.getElementById("ct"));document.querySelectorAll(".card").forEach(addTilt);},50);
   return html;
 }
+
+// ===== ACTIVITY RENDER =====
 function renderActivity(list){
-  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow'>&#9679;</div>Botda hali harakat yo'q<br>Botni sinab ko'ring!</div></div>";
+  if(!list||!list.length) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow anim-float'>&#9679;</div>Botda hali harakat yo'q<br>Botni sinab ko'ring!</div></div>";
   const html="<div class='anim-tab'>"+list.map((a,i)=>{
     const parts=a.action.split(":");
     const type=parts[0];
     const val=parts.slice(1).join(":");
     let icon="&#9679;";
     let color="var(--dim)";
-    if(type==="command"){icon="&#9881;";color="var(--accent)";}
-    else if(type==="button"){icon="&#9654;";color="var(--green)";}
-    else if(type==="text"){icon="&#9998;";color="var(--blue)";}
+    let anim="";
+    if(type==="command"){icon="&#9881;";color="var(--accent)";anim="anim-rotate";}
+    else if(type==="button"){icon="&#9654;";color="var(--green)";anim="anim-scale";}
+    else if(type==="text"){icon="&#9998;";color="var(--blue)";anim="anim-breathe";}
     const label=type==="command"?val:type==="button"?val:a.detail||"xabar";
     const time=a.created_at?new Date(a.created_at).toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"}):"";
-    return "<div class='card card-enter' style='animation-delay:"+(i*50)+"ms'><div class='row'>"+
-      "<div class='rAVA' style='color:"+color+";border-color:"+color+"30'>"+icon+"</div>"+
+    return "<div class='card card-enter' style='animation-delay:"+(i*60)+"ms'><div class='row'>"+
+      "<div class='rAVA "+anim+"' style='color:"+color+";border-color:"+color+"30'>"+icon+"</div>"+
       "<div class='nm'>"+esc(label)+"<small>"+time+"</small></div>"+
       "</div></div>";
   }).join("")+"</div>";
-  setTimeout(()=>staggerCards(document.getElementById("ct")),50);
+  setTimeout(()=>{staggerCards(document.getElementById("ct"));document.querySelectorAll(".card").forEach(addTilt);},50);
   return html;
 }
+
+// ===== RENDER TAB =====
 function renderTab(){
   const ct=$("ct");
   if(activeTab==="profile")ct.innerHTML=D._profile||"<div class='anim-tab shimmer' style='height:200px;border-radius:14px'></div>";
@@ -130,6 +230,8 @@ function renderTab(){
   else if(activeTab==="top")ct.innerHTML=D._top||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
   else if(activeTab==="activity")ct.innerHTML=D._activity||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
 }
+
+// ===== BOOT =====
 async function boot(){
   const uid=me?me.id:0;
   const idp=me&&Telegram.WebApp.initData?Telegram.WebApp.initData:"";
