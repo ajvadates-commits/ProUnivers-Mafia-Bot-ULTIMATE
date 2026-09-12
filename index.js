@@ -30,8 +30,8 @@ if (!config.token) {
 }
 
 const healthServer = http.createServer((req,res)=>{
-  if(req.url === "/health"){res.writeHead(200,{"Content-Type":"application/json"});return res.end(JSON.stringify({status:"ok",service:"mafia-bot",time:new Date().toISOString()}));}
-  res.writeHead(404);res.end("Not Found");
+  const payload=()=>JSON.stringify({status:"ok",service:"mafia-bot",path:req.url||"/",time:new Date().toISOString()});
+  res.writeHead(200,{"Content-Type":"application/json"});res.end(payload());
 });
 healthServer.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>logger.info(`Health server listening on ${process.env.PORT||3000}`));
 
