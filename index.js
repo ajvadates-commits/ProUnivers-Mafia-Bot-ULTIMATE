@@ -24,6 +24,7 @@ const cloneRunner=require("./clone/runner");
 const logger = require("./utils/logger");
 const advancedSuite = require("./advanced");
 const production = require("./handlers/production");
+const gifCapture = require("./handlers/gifCapture");
 const productionService = require("./services/production");
 
 validateConfig();
@@ -139,6 +140,7 @@ group.register(ctx);
 permissions.register(ctx);
 ownerTools.register(ctx);
 production.register(ctx);
+gifCapture.register(ctx);
 
 bot.on("polling_error", (err) => logger.error("Polling error", err));
 bot.on("message", (msg) => {
