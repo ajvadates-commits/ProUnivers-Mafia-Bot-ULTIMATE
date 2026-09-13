@@ -134,6 +134,31 @@ function register({bot,cloneId=0}) {
     await db.prepare("DELETE FROM game_players WHERE game_id=? AND user_id=?").run(g.id,msg.from.id);
     return bot.sendMessage(msg.chat.id,"✅  O'yindan chiqdingiz.");
   }
+  async function showTop(msg){
+    if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
+    const g=await getActive(msg.chat.id);
+    const base={id:0,username:"",first_name:"Ma'lumot yo'q",wins:0,level:1,coins:0};
+    let rows=[];
+    if(g){
+      try{rows=await db.prepare(`
+        SELECT u.id,u.username,u.first_name,u.wins,u.level,u.coins,
+          (SELECT COUNT(*) FROM game_players gp WHERE gp.game_id=?) AS in_game
+        FROM game_players gp
+        JOIN games gg ON gg.id=gp.game_id AND gg.chat_id=?
+        JOIN users u ON u.id=gp.user_id
+        GROUP BY u.id ORDER BY u.wins DESC,u.level DESC LIMIT 10
+      `).all(g.id,msg.chat.id);}catch(_){}
+    }else{
+      try{rows=await db.prepare("SELECT u.id,u.username,u.first_name,u.wins,u.level,u.coins FROM users u ORDER BY u.wins DESC,u.level DESC LIMIT 10").all();}catch(_){}
+    }
+    if(!rows.length) return bot.sendMessage(msg.chat.id,"🏆  Hali reyting yo'q.");
+    const lines=rows.map((u,i)=>{
+      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":` ${i+1}.`;
+      const name=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");
+      return `  ${medal} ${name}\n      🏆 ${u.wins||0} g'alaba · ⭐ Lv.${u.level||1}`;
+    }).join("\n\n");
+    return bot.sendMessage(msg.chat.id,`🏆  GURUH TOP 10\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
+  }
   async function myRole(msg){
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
     const g=await getActive(msg.chat.id);

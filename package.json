@@ -12,8 +12,8 @@
     "check-all": "node -e \"const fs=require(\"fs\"),cp=require(\"child_process\"),p=require(\"path\");let bad=0;function w(d){for(const f of fs.readdirSync(d)){const x=p.join(d,f),s=fs.statSync(x);if(s.isDirectory())w(x);else if(x.endsWith(\".js\")){try{cp.execFileSync(process.execPath,[\"--check\",x],{stdio:\"ignore\"})}catch(e){console.error(\"SYNTAX:\",x);bad++}}}}w(\".\");process.exit(bad?1:0)\""
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "node-telegram-bot-api": "^0.66.0",
-    "pg": "^8.13.1"
+    "pg": "^8.23.0"
   }
 }
