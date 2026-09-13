@@ -1,5 +1,5 @@
 const ranking=require("../services/ranking");
-function register({bot}){bot.onText(/^\/top$/,async msg=>{const txt=await ranking.format(10);await bot.sendMessage(msg.chat.id,"🏆 Global ranking\n"+(txt||"No data"));}); }
+function register({bot}){bot.onText(/^\/top(?:@\S+)?$/,async msg=>{const txt=await ranking.format(10);await bot.sendMessage(msg.chat.id,"🏆 Global ranking\n"+(txt||"No data"));}); }
 module.exports={register};
 function handlers_rankingRule1(input, context={}) {
   const value = input == null ? null : input;

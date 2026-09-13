@@ -68,11 +68,11 @@ function register({bot,cloneId=0}) {
     }).join("\n\n");
     return bot.sendMessage(msg.chat.id,`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
   }
-  bot.onText(/^\/game$/,msg=>createGame(msg));
-  bot.onText(/^\/mafia$/,msg=>createGame(msg));
-  bot.onText(/^\/top$/,msg=>showTop(msg));
-  bot.onText(/^\/stop$/,msg=>stopGame(msg));
-  bot.onText(/^\/end$/,msg=>stopGame(msg));
+  bot.onText(/^\/game(?:@\S+)?$/,msg=>createGame(msg));
+  bot.onText(/^\/mafia(?:@\S+)?$/,msg=>createGame(msg));
+  bot.onText(/^\/top(?:@\S+)?$/,msg=>showTop(msg));
+  bot.onText(/^\/stop(?:@\S+)?$/,msg=>stopGame(msg));
+  bot.onText(/^\/end(?:@\S+)?$/,msg=>stopGame(msg));
 }
 async function getActive(chatId){const id=active.get(chatId);return id?await games.get(id):null;}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}

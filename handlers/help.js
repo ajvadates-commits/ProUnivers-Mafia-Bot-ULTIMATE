@@ -1,4 +1,4 @@
-function register({bot}){bot.onText(/^\/help$/,msg=>{
+function register({bot}){bot.onText(/^\/help(?:@\S+)?$/,msg=>{
   const isGroup=msg.chat.type!=="private";
   if(isGroup){
     return bot.sendMessage(msg.chat.id,`🎭  MAFIA BOT — YORDMA\n━━━━━━━━━━━━━━━━━━\n/game — o'yin boshlash (admin)\n/stop — o'yni to'xtatish (admin)\n/start — ro'yxatdan o'tish\n/top — reyting (admin)\n/help — yordma\n━━━━━━━━━━━━━━━━━━`);

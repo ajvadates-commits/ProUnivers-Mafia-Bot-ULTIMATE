@@ -4,7 +4,7 @@ const { t } = require("../services/language");
 const config = require("../config");
 const moderation=require("../database/moderation");
 function register({bot,cloneId=0}) {
-  bot.onText(/^\/start$/, async msg => {
+  bot.onText(/^\/start(?:@\S+)?$/, async msg => {
     if(await moderation.isBanned(msg.from.id,cloneId))return bot.sendMessage(msg.chat.id,"⛔ Siz bloklangansiz.");
     await users.upsert(msg.from);
     const u=await users.get(msg.from.id);
