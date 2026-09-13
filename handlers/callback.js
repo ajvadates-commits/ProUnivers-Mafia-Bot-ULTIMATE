@@ -15,32 +15,29 @@ function register({bot,cloneId=0}) {
       if(action==="subscribe"&&value==="check"){ const missing=await required.check(bot,q.from.id,cloneId); await bot.answerCallbackQuery(q.id,{text:missing.length?"Hali barcha kanallarga qo'shilmagansiz.":"Obuna tasdiqlandi!"}); if(!missing.length) await bot.sendMessage(q.message.chat.id,"✅ Obuna tasdiqlandi."); return; }
       if(action==="game"&&value==="join"){
         const missing=await required.check(bot,q.from.id,cloneId);
-        if(missing.length){await bot.answerCallbackQuery(q.id,{text:"Avval majburiy kanallarga qo'shiling."}); await bot.sendMessage(q.message.chat.id,"📢 O'yinga kirishdan oldin quyidagi kanallarga obuna bo'ling:",{reply_markup:required.keyboard(missing)}); return;}
+        if(missing.length){await bot.answerCallbackQuery(q.id,{text:"Avval kanallarga obuna bo'ling."}); return;}
         await users.upsert(q.from);
         const p=await game.join(q.message.chat.id,q.from.id);
         if(!p)return bot.answerCallbackQuery(q.id,{text:"❌ Faol o'yin yo'q"});
-        const alreadyIn=p.filter(u=>u.id===q.from.id).length;
-        if(!alreadyIn)return bot.answerCallbackQuery(q.id,{text:"❌ O'yin to'lgan yoki tugagan"});
         require("../services/cloneActivity").track(cloneId,"game_join",q.message,{userId:q.from.id});
         const name=q.from.first_name||q.from.username||"O'yinchi";
-        await bot.answerCallbackQuery(q.id,{text:`✅ ${name} qo'shildi!`});
+        await bot.answerCallbackQuery(q.id,{text:"✅ "+name+" qo'shildi!"});
         const playerList=p.map((u,i)=>`  ${i+1}. ${u.first_name||u.username||u.id}`).join("\n");
-        const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  O'yinchilar: ${p.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━\n📌  "QO'SHILISH" — o'yinga qo'shilish\n📌  "BOSHLASH" — o'yinni boshlash`;
+        const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  O'yinchilar: ${p.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
         try{await bot.editMessageText(txt,{chat_id:q.message.chat.id,message_id:q.message.message_id,reply_markup:{inline_keyboard:[[{text:`👥  ${p.length}/${config.maxPlayers}`,callback_data:"noop"}],[{text:"🎯  QO'SHILISH",callback_data:"game:join"},{text:"▶️  BOSHLASH",callback_data:"game:start"}]]}});}catch(_){}
         return;
       }
-      else if(action==="lang"){ await users.setLanguage(q.from.id,value); await bot.answerCallbackQuery(q.id,{text:"Til o'zgartirildi"}); await bot.sendMessage(q.message.chat.id,"✅ Til o'zgartirildi."); }
+      else if(action==="lang"){ await users.setLanguage(q.from.id,value); await bot.answerCallbackQuery(q.id,{text:"Til o'zgartirildi"}); }
       else if(action==="game"&&value==="start"){
         const g=await game.getActive(q.message.chat.id);
         if(!g)return bot.answerCallbackQuery(q.id,{text:"❌ Faol o'yin yo'q"});
-        try{const admins=await bot.getChatAdministrators(q.message.chat.id);if(!admins.some(a=>a.user.id===q.from.id&&(a.status==="administrator"||a.status==="creator"))){return bot.answerCallbackQuery(q.id,{text:"⛔ Faqat admin boshlay oladi"});}}catch(_){}
         const players=await games.players(g.id);
-        if(players.length<config.minPlayers)return bot.answerCallbackQuery(q.id,{text:`❌ Kamida ${config.minPlayers} ta o'yinchi kerak! Hozir: ${players.length}`});
+        if(players.length<config.minPlayers)return bot.answerCallbackQuery(q.id,{text:`❌ Kamida ${config.minPlayers} ta o'yinchi kerak!`});
         await games.update(g.id,{state:"running",phase:"night"});
         await bot.answerCallbackQuery(q.id,{text:"🌙 Tun boshlandi!"});
         const gifs=loadGifs();
         const playerList=players.map((u,i)=>`  ${i+1}. ${u.first_name||u.username||u.id}`).join("\n");
-        const nightMsg=`🌙  TUN BOSHLANDI\n━━━━━━━━━━━━━━━━━━\n🏙  Shahar uyquga ketdi...\nKimdir ko'chasga chiqdi...\nKimdir boshqa uyquda qoldi...\n━━━━━━━━━━━━━━━━━━\n👥  O'yinchilar (${players.length}):\n${playerList}\n━━━━━━━━━━━━━━━━━━\n⏳  Rollar tarqatilmoqda...`;
+        const nightMsg=`🌙  TUN BOSHLANDI\n━━━━━━━━━━━━━━━━━━\n🏙  Shahar uyquga ketdi...\n━━━━━━━━━━━━━━━━━━\n👥  O'yinchilar (${players.length}):\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
         if(gifs.night){
           try{await bot.sendAnimation(q.message.chat.id,gifs.night,{caption:nightMsg});}catch(_){await bot.sendMessage(q.message.chat.id,nightMsg);}
         }else{

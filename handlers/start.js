@@ -9,13 +9,7 @@ function register({bot,cloneId=0}) {
     await users.upsert(msg.from);
     const u=await users.get(msg.from.id);
     if(msg.chat.type!=="private"){
-      try{
-        const admins=await bot.getChatAdministrators(msg.chat.id);
-        if(admins.some(a=>a.user.id===msg.from.id&&(a.status==="administrator"||a.status==="creator"))){
-          return bot.sendMessage(msg.chat.id,`📋  RO'YXATDAN O'TISH\n━━━━━━━━━━━━━━━━━━\n✅  Admin sifatida ro'yxatdan o'tdingiz.\n🎮  /game — o'yin boshlash\n🏆  /top — reyting\n🛑  /stop — o'yni to'xtatish\n━━━━━━━━━━━━━━━━━━`);
-        }
-      }catch(e){}
-      return bot.sendMessage(msg.chat.id,`📋  RO'YXATDAN O'TISH\n━━━━━━━━━━━━━━━━━━\n👤  ${msg.from.first_name||"O'yinchi"}, siz ro'yxatdan o'tdingiz!\n🎮  /game — o'yin boshlash\n🏆  /top — reyting\n━━━━━━━━━━━━━━━━━━`);
+      return bot.sendMessage(msg.chat.id,`📋  RO'YXATDAN O'TISH\n━━━━━━━━━━━━━━━━━━\n👤  ${msg.from.first_name||"O'yinchi"}, siz ro'yxatdan o'tdingiz!\n🎮  /game — o'yin boshlash\n🏆  /top — reyting\n🛑  /stop — o'yni to'xtatish\n━━━━━━━━━━━━━━━━━━`);
     }
     await bot.sendMessage(msg.chat.id,t(u.language,"start"),{
       reply_markup:{
