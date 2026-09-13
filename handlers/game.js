@@ -61,7 +61,16 @@ function register({bot,cloneId=0}) {
       return;
     }
   });
+  async function renderLobby(bot,chatId,g){
+    const players=await games.players(g.id);
+    const rows=players.map((p,i)=>`  ${i+1}. ${p.username&&p.username!=="GroupAnonymousBot"?"@"+p.username:(p.first_name||"O'yinchi")}`).join("\n");
+    const txt=`🎭  MAFIA LOBBY — DAVOM\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${rows}\n━━━━━━━━━━━━━━━━━━`;
+    const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
+    return bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});
+  }
   async function createGame(msg){
+    const dup=await games.getActiveByChat(msg.chat.id);
+    if(dup&&dup.state==="lobby") return renderLobby(bot,msg.chat.id,dup);
     await users.upsert(msg.from);
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"🎭 Mafia o'yini faqat guruhlarda ishlaydi!");
     if(msg.from.id===1087968824) return;
