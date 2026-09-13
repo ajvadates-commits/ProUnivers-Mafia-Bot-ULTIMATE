@@ -22,7 +22,7 @@ function register({bot,cloneId=0}) {
       await games.addPlayer(g.id,msg.from.id);
       await bot.sendMessage(msg.chat.id,"✅  O'YINGA QO'SHILDINGIZ!\n━━━━━━━━━━━━━━━━━━\n🎭  Mafia o'yini boshlanishini kuting.\n━━━━━━━━━━━━━━━━━━");
       const players=await games.players(g.id);
-      const playerList=players.map((u,i)=>`  ${i+1}. ${u.username?"@"+u.username:u.first_name||u.id}`).join("\n");
+      const playerList=players.map((u,i)=>{const n=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");return `  ${i+1}. ${n}`;}).join("\n");
       const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
       const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
       try{await bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":`👥  ${players.length} o'yinchi`,callback_data:"noop"}],[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
@@ -40,7 +40,7 @@ function register({bot,cloneId=0}) {
       if(active.has(msg.chat.id)) return bot.sendMessage(msg.chat.id,"⏳ Faol lobby mavjud.");
       const id=crypto.randomUUID(); await games.create(id,msg.chat.id); await games.addPlayer(id,msg.from.id); cloneActivity.track(cloneId,"game_start",msg);
       active.set(msg.chat.id,id);
-      const name=msg.from.username?"@"+msg.from.username:msg.from.first_name||"O'yinchi";
+      const name=(msg.from.username&&msg.from.username!=="GroupAnonymousBot")?"@"+msg.from.username:(msg.from.first_name||"O'yinchi");
       const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
       const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
       return bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});
@@ -61,7 +61,7 @@ function register({bot,cloneId=0}) {
     if(!top.length) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
     const lines=top.map((u,i)=>{
       const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
-      const name=u.username?"@"+u.username:u.first_name||u.id;
+      const name=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");
       return `  ${medal} ${name}\n      💰 ${u.wins||0} g'alaba  ·  ⭐ Lv.${u.level||1}`;
     }).join("\n\n");
     return bot.sendMessage(msg.chat.id,`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
