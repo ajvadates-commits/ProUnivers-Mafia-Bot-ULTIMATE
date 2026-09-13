@@ -8,10 +8,16 @@ const botRights=require("../services/botRights");
 const cloneActivity=require("../services/cloneActivity");
 const db=require("../database");
 const active=new Map();
+async function isAdmin(bot,chatId,userId){
+  try{const m=await bot.getChatMember(chatId,userId);return["administrator","creator"].includes(m.status);}catch(_){return false;}
+}
 function register({bot,cloneId=0}) {
   async function createGame(msg){
     await users.upsert(msg.from);
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"🎭 Mafia o'yini faqat guruhlarda ishlaydi!\n\nGuruhga o'ting va /game bosing.");
+    if(!await isAdmin(bot,msg.chat.id,msg.from.id)){
+      return bot.sendMessage(msg.chat.id,"⛔ Faqat guruh adminlari o'yin boshlay oladi.");
+    }
     await groups.upsert(msg.chat.id,msg.chat.title);
     try{
       const r=await botRights.check(bot,msg.chat.id);
@@ -22,22 +28,17 @@ function register({bot,cloneId=0}) {
       active.set(msg.chat.id,id);
       const u=await users.get(msg.from.id);
       const name=msg.from.first_name||msg.from.username||"O'yinchi";
-      const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n🎮  Yaratuvchi: ${name}\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━\n📌  "QO'SHILISH" tugmasini bosing!`;
+      const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n🎮  Yaratuvchi: ${name}\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━\n📌  "QO'SHILISH" — o'yinga qo'shilish\n📌  "BOSHLASH" — o'yinni boshlash`;
       return bot.sendMessage(msg.chat.id,txt,{reply_markup:lobby(u.language)});
-    }catch(e){return bot.sendMessage(msg.chat.id,"❌ Bot admin huquqlarini tekshirib bo'lmadi.");}
+    }catch(e){return bot.sendMessage(msg.chat.id,"❌ Xatolik yuz berdi.");}
   }
   async function showTop(msg){
     if(msg.chat.type==="private") return;
-    try{
-      const member=await bot.getChatMember(msg.chat.id,msg.from.id);
-      if(!["administrator","creator"].includes(member.status)){
-        return bot.sendMessage(msg.chat.id,"⛔ Faqat guruh adminlari foydalanishi mumkin.");
-      }
-    }catch(e){return;}
+    if(!await isAdmin(bot,msg.chat.id,msg.from.id)){
+      return bot.sendMessage(msg.chat.id,"⛔ Faqat guruh adminlari foydalanishi mumkin.");
+    }
     let top=[];
-    try{
-      top=await db.prepare("SELECT id,first_name,username,wins,level,xp,games FROM users ORDER BY wins DESC,xp DESC LIMIT 10").all();
-    }catch(e){}
+    try{top=await db.prepare("SELECT id,first_name,username,wins,level,xp,games FROM users ORDER BY wins DESC,xp DESC LIMIT 10").all();}catch(e){}
     if(!top.length) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
     const lines=top.map((u,i)=>{
       const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
