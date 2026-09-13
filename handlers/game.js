@@ -75,7 +75,9 @@ function register({bot,cloneId=0}) {
       const name=(msg.from.username&&msg.from.username!=="GroupAnonymousBot")?"@"+msg.from.username:(msg.from.first_name||"O'yinchi");
       const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
       const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
-      return bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});
+      const sent=await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  Qo'shilish","url":btn}]]}});
+      try{await bot.pinChatMessage(msg.chat.id,sent.message_id,{disable_notification:true});}catch(_){}
+      return sent;
     }catch(e){return bot.sendMessage(msg.chat.id,"❌ Xatolik.");}
   }
   async function stopGame(msg){

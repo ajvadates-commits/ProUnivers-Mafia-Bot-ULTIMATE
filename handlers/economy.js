@@ -2,36 +2,72 @@ const config=require("../config");
 const monetization=require("../services/monetization");
 const economy=require("../services/economy");
 const prices=require("../services/economyPrices");
+const users=require("../database/users");
+const crypto=require("crypto");
+const pendingGifts=new Map();
+const CLAIM_TTL=5*60*1000;
+setInterval(()=>{const now=Date.now();for(const[k,v]of pendingGifts)if(now>v.expiresAt)pendingGifts.delete(k);},60*1000).unref();
 function register({bot,isClone=false}){
- bot.onText(/^\/shop(?:@\S+)?$/,async msg=>{
-  if(msg.chat.type!=="private")return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
-  const c=await prices.get();
-  const clonePrice=isClone?0:c.clone_price;
-  await bot.sendMessage(msg.chat.id,`💎 SHOP\n\n💙 VIP — ${config.monetization.vipPriceStars} Stars\n💜 PRO — ${config.monetization.proPriceStars} Stars\n🎁 Premium Sticker — ${config.monetization.premiumStickerPriceStars} Stars${isClone?"":"\n🧬 Clone Bot — "+clonePrice+" Stars"}`,{reply_markup:{inline_keyboard:[
-   [{text:"💙 Buy VIP",callback_data:"buy:vip"}],[{text:"💜 Buy PRO",callback_data:"buy:pro"}],[{text:"🎁 Premium sticker",callback_data:"buy:premium_sticker"}],...(isClone?[]:[[{text:"🧬 Clone Bot",callback_data:"buy:clone"}]])
-  ]}});
- });
- bot.onText(/^\/pro(?:@\S+)?$/,async msg=>{
-  if(msg.chat.type!=="private")return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
-  const stars=await monetization.product("vip");
-  const txt=`💎 PREMIUM (VIP)\n━━━━━━━━━━━━━━━━━━\n⭐ Narxi: ${stars} Stars\n\nVIP afzalliklari:\n- Cheksiz coin\n- Maxsus role\n- O'yindan chiqish\n- Barcha imtiyozlar\n━━━━━━━━━━━━━━━━━━`;
-  await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"💙 Sotib olish",callback_data:"buy:vip"}],[{"text":"⬅️ Orqaga",callback_data:"back:shop"}]]}});
+ bot.onText(/^\/give(?:@\S+)?$/,async msg=>{
+  if(msg.chat.type!=="private") return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
+  const parts=msg.text.trim().split(/\s+/);
+  const raw=parts[1];
+  if(!/^\d+$/.test(raw||"")) return bot.sendMessage(msg.chat.id,"❌ To'g'ri miqdor kiriting.\nFormat: /give 10");
+  const amount=Number(raw);
+  const session=await monetization.get(msg.from.id);
+  const unlimited=session.vip||session.pro;
+  const myWallet=await users.wallet(msg.from.id);
+  const target=msg.reply_to_message?.from;
+  if(target){
+    if(!unlimited&&(myWallet.diamonds||0)<amount) return bot.sendMessage(msg.chat.id,`❌ Almazlaringiz yetarli emas.\n💰 Balansingiz: ${myWallet.diamonds||0} 💎`);
+    if(!unlimited) await users.addDiamonds(msg.from.id,-amount);
+    await users.addDiamonds(target.id,amount);
+    const name=(target.username&&target.username!=="GroupAnonymousBot")?"@"+target.username:(target.first_name||"O'yinchi");
+    return bot.sendMessage(msg.chat.id,`💎  ALMAZ O'TKAZILDI!\n━━━━━━━━━━━━━━━━━━\n💎  ${name} — ${amount} almaz oldi!\n━━━━━━━━━━━━━━━━━━`);
+  }
+  if(!unlimited&&(myWallet.diamonds||0)<amount) return bot.sendMessage(msg.chat.id,`❌ Almazlaringiz yetarli emas.\n💰 Balansingiz: ${myWallet.diamonds||0} 💎\nKo'ring: /profile`);
+  const giftId=crypto.randomBytes(9).toString("hex");
+  const txt=`💎  ALMAZ SOVG'A!\n━━━━━━━━━━━━━━━━━━\n💎  ${amount} almaz — birinchi bosgan oladi!\n━━━━━━━━━━━━━━━━━━`;
+  const btn=await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"💎  ALMAZ OLISH","callback_data":"claim:"+giftId}]]}});
+  pendingGifts.set(giftId,{amount,giverId:msg.from.id,msgId:btn.message_id});
+  return btn;
  });
  bot.on("callback_query",async q=>{
-  if(!q.data.startsWith("buy:"))return; const product=q.data.split(":")[1],stars=await monetization.product(product); if(!stars)return;
-  await bot.answerCallbackQuery(q.id,{text:"Invoice prepared"});
-  await bot.sendInvoice(q.message.chat.id,`Mafia ${product}`,`Purchase: ${product}`,"mafia_"+product, "XTR", [{label:product,amount:stars}]);
+  if(!q.data.startsWith("claim:")) return;
+  const giftId=q.data.split(":")[1],gift=pendingGifts.get(giftId);
+  if(!gift) return bot.answerCallbackQuery(q.id,{text:"⏳ Bu sovg'a tugagan yoki allaqachon olingan.",show_alert:true});
+  pendingGifts.delete(giftId);
+  const session=await monetization.get(msg.from.id);
+  const unlimited=session.vip||session.pro;
+  if(!unlimited) await users.addDiamonds(gift.giverId,-gift.amount);
+  await users.addDiamonds(q.from.id,gift.amount);
+  await bot.answerCallbackQuery(q.id,{text:`💎 +${gift.amount} almaz olindi!`,show_alert:true});
+  const name=(q.from.username&&q.from.username!=="GroupAnonymousBot")?"@"+q.from.username:(q.from.first_name||"O'yinchi");
+  return bot.sendMessage(q.message.chat.id,`✅  ${name} sovg'ani oldi! 🎁\n━━━━━━━━━━━━━━━━━━\n💎  +${gift.amount} almaz\n━━━━━━━━━━━━━━━━━━`);
  });
- bot.on("pre_checkout_query",q=>bot.answerPreCheckoutQuery(q.id,true));
- bot.on("message",async msg=>{
-  if(!msg.successful_payment)return;
-  const sp=msg.successful_payment, product=sp.invoice_payload.replace("mafia_","");
-  const expected=await monetization.product(product);
-  if(!expected||Number(sp.total_amount)!==Number(expected))return bot.sendMessage(msg.chat.id,"❌ To'lov summasi mos emas. Owner bilan bog'laning.");
-  const fresh=await economy.recordStarsPurchase(msg.from.id,product,sp.total_amount,sp.telegram_payment_charge_id);
-  if(!fresh)return bot.sendMessage(msg.chat.id,"ℹ️ Bu to'lov allaqachon qayta ishlangan.");
-  if(product==="clone")await require("../database/clones").addCredit(msg.from.id); else await monetization.grant(msg.from.id,product);
-  await bot.sendMessage(msg.chat.id,product==="clone"?`✅ Clone krediti berildi!\n⭐ ${sp.total_amount} Stars\n🧬 /clone orqali tokenni ulab clone yarating.`:`✅ To'lov qabul qilindi!\n⭐ ${sp.total_amount} Stars\n💎 ${product} aktiv qilindi.`);
+ bot.onText(/^\/give(?:@\S+)?$/,async msg=>{
+  if(msg.chat.type!=="private") return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
+  const parts=msg.text.trim().split(/\s+/);
+  const raw=parts[1];
+  if(!/^\d+$/.test(raw||"")) return bot.sendMessage(msg.chat.id,"❌ To'g'ri miqdor kiriting.\nFormat: /give 10");
+  const amount=Number(raw);
+  const session=await monetization.get(msg.from.id);
+  const unlimited=session.vip||session.pro;
+  const myWallet=await users.wallet(msg.from.id);
+  const target=msg.reply_to_message?.from;
+  if(target){
+    if(!unlimited&&(myWallet.diamonds||0)<amount) return bot.sendMessage(msg.chat.id,`❌ Almazlaringiz yetarli emas.\n💰 Balansingiz: ${myWallet.diamonds||0} 💎`);
+    if(!unlimited) await users.addDiamonds(msg.from.id,-amount);
+    await users.addDiamonds(target.id,amount);
+    const name=(target.username&&target.username!=="GroupAnonymousBot")?"@"+target.username:(target.first_name||"O'yinchi");
+    return bot.sendMessage(msg.chat.id,`💎  ALMAZ O'TKAZILDI!\n━━━━━━━━━━━━━━━━━━\n💎  ${name} — ${amount} almaz oldi!\n━━━━━━━━━━━━━━━━━━`);
+  }
+  if(!unlimited&&(myWallet.diamonds||0)<amount) return bot.sendMessage(msg.chat.id,`❌ Almazlaringiz yetarli emas.\n💰 Balansingiz: ${myWallet.diamonds||0} 💎\nKo'ring: /profile`);
+  const giftId=crypto.randomBytes(9).toString("hex");
+  const txt=`💎  ALMAZ SOVG'A!\n━━━━━━━━━━━━━━━━━━\n💎  ${amount} almaz — birinchi bosgan oladi!\n━━━━━━━━━━━━━━━━━━`;
+  const btn=await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"💎  ALMAZ OLISH","callback_data":"claim:"+giftId}]]}});
+  pendingGifts.set(giftId,{amount,giverId:msg.from.id,msgId:btn.message_id});
+  return btn;
  });
 }
 module.exports={register};
