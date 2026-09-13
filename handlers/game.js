@@ -12,6 +12,26 @@ function register({bot,cloneId=0}) {
     if(!msg.text)return;
     const text=msg.text.trim();
     const joinMatch=text.match(/^\/start\s+join_(-?\d+)$/);
+    const gameMatch=text.match(/^\/start\s+game_(-?\d+)$/);
+    if(gameMatch&&msg.chat.type==="private"){
+      if(msg.from.id===1087968824) return;
+      const chatId=Number(gameMatch[1]);
+      await users.upsert(msg.from);
+      if(active.has(chatId)) return bot.sendMessage(msg.chat.id,"⏳ Bu guruhda allaqachon faol lobby mavjud.");
+      await groups.upsert(chatId,"");
+      try{
+        const r=await botRights.check(bot,chatId);
+        if(!r.ok) return bot.sendMessage(msg.chat.id,"❌ Bot guruhda yetarli huquqlarga ega emas.");
+        const id=crypto.randomUUID(); await games.create(id,chatId); await games.addPlayer(id,msg.from.id);
+        active.set(chatId,id);
+        const name=(msg.from.username&&msg.from.username!=="GroupAnonymousBot")?"@"+msg.from.username:(msg.from.first_name||"O'yinchi");
+        await bot.sendMessage(msg.chat.id,"✅  Lobby yaratildi! Guruhga qarang.");
+        const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
+        const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
+        try{await bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
+      }catch(e){return bot.sendMessage(msg.chat.id,"❌ Xatolik.");}
+      return;
+    }
     if(joinMatch&&msg.chat.type==="private"){
       if(msg.from.id===1087968824) return;
       const chatId=Number(joinMatch[1]);
