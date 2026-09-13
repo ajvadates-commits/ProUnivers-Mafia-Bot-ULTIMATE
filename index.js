@@ -136,6 +136,7 @@ bot.setMyCommands([
   {command:"mafia",description:"Mafia o'yinini boshlash"},
   {command:"stop",description:"O'yinni to'xtatish"},
   {command:"top",description:"Reyting"},
+  {command:"checkbot",description:"Bot huquqlarini tekshirish"},
   {command:"help",description:"Yordam"},
 ]).catch(()=>{});
 
