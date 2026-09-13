@@ -140,6 +140,26 @@ bot.setMyCommands([
   {command:"help",description:"Yordam"},
 ]).catch(()=>{});
 
+bot.setMyCommands([
+  {command:"start",description:"Bosh menyu"},
+  {command:"profile",description:"Profilim"},
+  {command:"menu",description:"Menyu"},
+  {command:"language",description:"Til o'zgartirish"},
+  {command:"shop",description:"Do'kon"},
+  {command:"referrals",description:"Takliflar"},
+  {command:"help",description:"Yordam"},
+],{scope:{type:"BotCommandScopeAllPrivateChats"}}).catch(()=>{});
+
+bot.setMyCommands([
+  {command:"start",description:"Ro'yxatdan o'tish"},
+  {command:"game",description:"O'yin boshlash"},
+  {command:"mafia",description:"O'yin boshlash"},
+  {command:"stop",description:"O'yinni to'xtatish"},
+  {command:"top",description:"Reyting"},
+  {command:"checkbot",description:"Bot huquqlarini tekshirish"},
+  {command:"help",description:"Yordam"},
+],{scope:{type:"BotCommandScopeAllGroupChats"}}).catch(()=>{});
+
 const ctx = { bot, db, config, logger, advancedSuite };
 
 start.register(ctx);
