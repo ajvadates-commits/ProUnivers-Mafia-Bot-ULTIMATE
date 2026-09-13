@@ -19,7 +19,7 @@ function register({bot,cloneId=0}) {
       if(active.has(msg.chat.id)) return bot.sendMessage(msg.chat.id,"⏳ Faol lobby mavjud.");
       const id=crypto.randomUUID(); await games.create(id,msg.chat.id); await games.addPlayer(id,msg.from.id); cloneActivity.track(cloneId,"game_start",msg);
       active.set(msg.chat.id,id);
-      const name=msg.from.first_name||msg.from.username||"O'yinchi";
+      const name=msg.from.username?"@"+msg.from.username:msg.from.first_name||"O'yinchi";
       const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
       const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
       return bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});
@@ -32,10 +32,10 @@ function register({bot,cloneId=0}) {
     const existing=await games.players(g.id);
     if(existing.find(p=>p.id===msg.from.id)) return bot.sendMessage(msg.chat.id,"✅ Siz allaqachon o'yinga qo'shilgansiz!");
     await games.addPlayer(g.id,msg.from.id);
-    const name=msg.from.first_name||msg.from.username||"O'yinchi";
+    const name=msg.from.username?"@"+msg.from.username:msg.from.first_name||"O'yinchi";
     await bot.sendMessage(msg.chat.id,`✅  O'YINGA QO'SHILDINGIZ!\n━━━━━━━━━━━━━━━━━━\n🎭  Mafia o'yini boshlanishini kuting.\n━━━━━━━━━━━━━━━━━━`);
     const players=await games.players(g.id);
-    const playerList=players.map((u,i)=>`  ${i+1}. ${u.first_name||u.username||u.id}`).join("\n");
+    const playerList=players.map((u,i)=>`  ${i+1}. ${u.username?"@"+u.username:u.first_name||u.id}`).join("\n");
     const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
     const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
     try{await bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":`👥  ${players.length} o'yinchi`,callback_data:"noop"}],[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
