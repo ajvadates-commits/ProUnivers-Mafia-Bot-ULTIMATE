@@ -4,6 +4,7 @@ const economy=require("../services/economy");
 const prices=require("../services/economyPrices");
 function register({bot,isClone=false}){
  bot.onText(/^\/shop(?:@\S+)?$/,async msg=>{
+  if(msg.chat.type!=="private")return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
   const c=await prices.get();
   const clonePrice=isClone?0:c.clone_price;
   await bot.sendMessage(msg.chat.id,`💎 SHOP\n\n💙 VIP — ${config.monetization.vipPriceStars} Stars\n💜 PRO — ${config.monetization.proPriceStars} Stars\n🎁 Premium Sticker — ${config.monetization.premiumStickerPriceStars} Stars${isClone?"":"\n🧬 Clone Bot — "+clonePrice+" Stars"}`,{reply_markup:{inline_keyboard:[
