@@ -32,6 +32,7 @@ function register({bot,cloneId=0}) {
   async function createGame(msg){
     await users.upsert(msg.from);
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"🎭 Mafia o'yini faqat guruhlarda ishlaydi!");
+    if(msg.from.username==="GroupAnonymousBot") return bot.sendMessage(msg.chat.id,"🔒 Anonim yuborib bo'lmaydi. Identity'ni yoqing.");
     await groups.upsert(msg.chat.id,msg.chat.title);
     try{
       const r=await botRights.check(bot,msg.chat.id);
