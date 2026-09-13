@@ -14,6 +14,15 @@ function register({bot,cloneId=0}) {
         const btn=`https://t.me/topmafia_uzbot?start=game_${msg.chat.id}`;
         return bot.sendMessage(msg.chat.id,`🎭  MAFIA O'YINI\n━━━━━━━━━━━━━━━━━━\nO'yinni boshlash uchun tugmani bosing.\n━━━━━━━━━━━━━━━━━━`,{reply_markup:{inline_keyboard:[[{"text":"🎮  O'YIN BOSHLASH","url":btn}]]}});
       }
+      if(g.state==="lobby"){
+        const admin=await bot.getChatMember(msg.chat.id,msg.from.id).then(m=>["creator","administrator"].includes(m.status)).catch(_=>false);
+        if(admin){
+          const started=await game.getActive(msg.chat.id);
+          if(started&&started.id===g.id){
+            try{return await require("./game").startMatch(bot,msg,g);}catch(_){return bot.sendMessage(msg.chat.id,"❌ O'yinni boshlashda xatolik.");}
+          }
+        }
+      }
       const existing=await require("../database/games").players(g.id);
       if(existing.find(p=>p.id===msg.from.id)) return bot.sendMessage(msg.chat.id,"✅ Siz allaqachon o'yinga qo'shilgansiz!");
       await require("../database/games").addPlayer(g.id,msg.from.id);

@@ -227,4 +227,21 @@ function register({bot,cloneId=0}) {
 }
 async function getActive(chatId){return await games.getActiveByChat(chatId);}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}
-module.exports={register,getActive,join};
+  async function startMatch(bot,msg,g){
+    if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin o'yinni boshlashi mumkin.");
+    if(g.state!=="lobby") return bot.sendMessage(msg.chat.id,"❌ O'yin allaqachon boshlangan.");
+    const players=await games.players(g.id);
+    if(players.length<config.minPlayers) return bot.sendMessage(msg.chat.id,`❌ Minimal ${config.minPlayers} o'yinchi kerak (hozir ${players.length}).`);
+    const assigned=roles.assign(g.id,players.map(p=>p.user_id));
+    for(const a of assigned){
+      await games.setRole(g.id,a.user_id,a.roleId);
+      try{
+        const card=cardText(a.roleId);
+        if(card&&a.user_id!==msg.from.id) await bot.sendMessage(a.user_id,`🎭  SIZNING ROLINGIZ\n━━━━━━━━━━━━━━━━━━\n${card}`);
+      }catch(_){}
+    }
+    await games.update(g.id,{state:"running",phase:"night"});
+    return bot.sendMessage(msg.chat.id,"🎭  O'YIN BOSHLANDI!\n━━━━━━━━━━━━━━━━━━\n🔒  Har bir o'yinchiga rol kartochkasi PM'da yuborildi.\n━━━━━━━━━━━━━━━━━━");
+  }
+  module.exports={register,getActive,join,startMatch};
