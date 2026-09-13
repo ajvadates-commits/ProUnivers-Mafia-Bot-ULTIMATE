@@ -13,6 +13,7 @@ function register({bot,cloneId=0}) {
     const text=msg.text.trim();
     const joinMatch=text.match(/^\/start\s+join_(-?\d+)$/);
     if(joinMatch&&msg.chat.type==="private"){
+      if(msg.from.id===1087968824) return;
       const chatId=Number(joinMatch[1]);
       await users.upsert(msg.from);
       const g=await getActive(chatId);
@@ -32,7 +33,7 @@ function register({bot,cloneId=0}) {
   async function createGame(msg){
     await users.upsert(msg.from);
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"🎭 Mafia o'yini faqat guruhlarda ishlaydi!");
-    if(msg.from.username==="GroupAnonymousBot") return bot.sendMessage(msg.chat.id,"🔒 Anonim yuborib bo'lmaydi. Identity'ni yoqing.");
+    if(msg.from.id===1087968824) return;
     await groups.upsert(msg.chat.id,msg.chat.title);
     try{
       const r=await botRights.check(bot,msg.chat.id);
