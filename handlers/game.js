@@ -85,7 +85,7 @@ function register({bot,cloneId=0}) {
     if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin o'yni to'xtata oladi.");
     const g=await getActive(msg.chat.id);
     if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
-    try{await games.update(g.id,{state:"ended",phase:"ended"});}catch(_){}
+    try{await games.endAllByChat(msg.chat.id);}catch(_){}
     return bot.sendMessage(msg.chat.id,"🛑  O'yin to'xtatildi!");
   }
   async function extendGame(msg){
