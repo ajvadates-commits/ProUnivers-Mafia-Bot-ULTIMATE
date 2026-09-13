@@ -1,8 +1,46 @@
 function register({bot}){bot.onText(/^\/help(?:@\S+)?$/,msg=>{
   const isGroup=msg.chat.type!=="private";
   if(isGroup){
-    return bot.sendMessage(msg.chat.id,`🎭  MAFIA BOT — YORDMA\n━━━━━━━━━━━━━━━━━━\n/game — o'yin boshlash\n/mafia — o'yin boshlash\n/stop — o'yni to'xtatish\n/top — reyting\n/checkbot — bot huquqlarini tekshirish\n/start — ro'yxatdan o'tish\n━━━━━━━━━━━━━━━━━━`);
+    return bot.sendMessage(msg.chat.id,
+`❓ Buyruqlar ro'yxati
+━━━━━━━━━━━━━━━━━━
+
+🎮 O'YIN
+/game — O'yin boshlash
+/start — Ro'yxatdan o'tish
+/stop — O'yni to'xtatish (admin)
+/extend — Vaqtni uzaytirish (admin)
+/utag — Qo'shilganlarni chaqirish (admin)
+/kick — O'yinchini chiqarish (admin)
+/leave — O'yindan chiqish (Premium)
+/my_role — Joriy rolingiz
+/roles — Barcha rollar
+/settings — Guruh sozlamalari (admin)
+/top — Guruh top o'yinchilari
+
+💰 PUL VA PREMIUM
+/profile — Balans va statistika
+
+🛠 BOSHQA
+/checkbot — Bot huquqlarini tekshirish
+/help — Yordma
+━━━━━━━━━━━━━━━━━━`);
   }
-  return bot.sendMessage(msg.chat.id,`🎭  MAFIA BOT — YORDMA\n━━━━━━━━━━━━━━━━━━\n🎮  O'YIN:\n/game — guruhda o'yin boshlash\n/start — ro'yxatdan o'tish\n\n👤  SHAXSIY:\n/profile — profil\n/menu — menyu\n/language — til o'zgartirish\n/shop — VIP, PRO do'kon\n/referrals — takliflar\n━━━━━━━━━━━━━━━━━━`);
+  return bot.sendMessage(msg.chat.id,
+`❓ Buyruqlar ro'yxati
+━━━━━━━━━━━━━━━━━━
+
+👤 SHAXSIY
+/start — Bosh menyu
+/profile — Balans va statistika
+/pro — Premium (VIP) sotib olish
+/menu — Menyu
+/language — Til o'zgartirish
+/shop — Do'kon
+/referrals — Takliflar
+
+🛡 YORDAM
+/help — Yordma
+━━━━━━━━━━━━━━━━━━`);
 });}
 module.exports={register};

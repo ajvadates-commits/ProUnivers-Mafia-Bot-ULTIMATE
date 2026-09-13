@@ -6,6 +6,17 @@ const config=require("../config");
 const botRights=require("../services/botRights");
 const cloneActivity=require("../services/cloneActivity");
 const db=require("../database");
+const monetization=require("../services/monetization");
+const groupSettings=new Map();
+function isAdmin(msg){
+  return["creator","administrator"].includes(msg.chat_member?.status)||["creator","administrator"].includes(msg.from?.chat_member_status);
+}
+async function checkAdmin(bot,msg){
+  try{
+    const m=await bot.getChatMember(msg.chat.id,msg.from.id);
+    return["creator","administrator"].includes(m.status);
+  }catch(_){return false;}
+}
 function register({bot,cloneId=0}) {
   bot.on("message",async msg=>{
     if(!msg.text)return;
@@ -69,36 +80,112 @@ function register({bot,cloneId=0}) {
   }
   async function stopGame(msg){
     if(msg.chat.type==="private") return;
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin o'yni to'xtata oladi.");
     const g=await getActive(msg.chat.id);
     if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
     try{await games.update(g.id,{state:"ended",phase:"ended"});}catch(_){}
     return bot.sendMessage(msg.chat.id,"🛑  O'yin to'xtatildi!");
   }
-  async function showTop(msg){
+  async function extendGame(msg){
     if(msg.chat.type==="private") return;
-    let top=[];
-    try{top=await db.prepare(`
-      SELECT u.id,u.first_name,u.username,u.wins,u.level,u.xp,u.games
-      FROM users u
-      INNER JOIN game_players gp ON gp.user_id=u.id
-      INNER JOIN games g ON g.id=gp.game_id AND g.chat_id=?
-      GROUP BY u.id
-      ORDER BY u.wins DESC,u.xp DESC LIMIT 10
-    `).all(msg.chat.id);}catch(e){}
-    if(!top.length) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
-    const lines=top.filter(u=>u.username!=="GroupAnonymousBot").map((u,i)=>{
-      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
-      const name=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");
-      return `  ${medal} ${name}\n      💰 ${u.wins||0} g'alaba  ·  ⭐ Lv.${u.level||1}`;
-    }).join("\n\n");
-    if(!lines) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
-    return bot.sendMessage(msg.chat.id,`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin vaqtni uzaytira oladi.");
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    if(g.state!=="lobby") return bot.sendMessage(msg.chat.id,"❌ Faqat lobby paytida uzaytirish mumkin.");
+    return bot.sendMessage(msg.chat.id,"⏰  Ro'yxatdan o'tish vaqti 60 soniya uzaytirildi!");
   }
+  async function utagGame(msg){
+    if(msg.chat.type==="private") return;
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin chaqira oladi.");
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    const players=await games.players(g.id);
+    if(!players.length) return bot.sendMessage(msg.chat.id,"❌ Hali hech kim qo'shilmagan.");
+    const mentions=players.map(p=>{
+      const n=(p.username&&p.username!=="GroupAnonymousBot")?"@"+p.username:(p.first_name||"O'yinchi");
+      return `<a href="tg://user?id=${p.id}">${n}</a>`;
+    }).join(", ");
+    return bot.sendMessage(msg.chat.id,`📢  O'YINCHA CHAQRILDI!\n━━━━━━━━━━━━━━━━━━\n${mentions}\n━━━━━━━━━━━━━━━━━━\nO'yin tez orada boshlanadi!`,{parse_mode:"HTML"});
+  }
+  async function kickPlayer(msg){
+    if(msg.chat.type==="private") return;
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin o'yinchini chiqara oladi.");
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    const reply=msg.reply_to_message;
+    if(!reply) return bot.sendMessage(msg.chat.id,"❌ O'yinchini kick qilish uchun unga reply bosing.\nFormat: /kick (reply)");
+    const userId=reply.from.id;
+    const players=await games.players(g.id);
+    const player=players.find(p=>p.id===userId);
+    if(!player) return bot.sendMessage(msg.chat.id,"❌ Bu foydalanuvchi o'yinda emas.");
+    await db.prepare("DELETE FROM game_players WHERE game_id=? AND user_id=?").run(g.id,userId);
+    const name=(reply.from.username&&reply.from.username!=="GroupAnonymousBot")?"@"+reply.from.username:(reply.from.first_name||"O'yinchi");
+    return bot.sendMessage(msg.chat.id,`🚪  ${name} o'yindan chiqarildi.`);
+  }
+  async function leaveGame(msg){
+    if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    const ent=await monetization.get(msg.from.id);
+    if(!ent.vip&&!ent.pro) return bot.sendMessage(msg.chat.id,"❌ Faqat Premium (VIP/PRO) o'yinchilar o'yindan chiqishi mumkin.");
+    const players=await games.players(g.id);
+    const player=players.find(p=>p.id===msg.from.id);
+    if(!player) return bot.sendMessage(msg.chat.id,"❌ Siz o'yinda emassiz.");
+    await db.prepare("DELETE FROM game_players WHERE game_id=? AND user_id=?").run(g.id,msg.from.id);
+    return bot.sendMessage(msg.chat.id,"✅  O'yindan chiqdingiz.");
+  }
+  async function myRole(msg){
+    if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    if(g.state!=="running") return bot.sendMessage(msg.chat.id,"❌ O'yin hali boshlanmagan.");
+    const players=await games.players(g.id);
+    const player=players.find(p=>p.id===msg.from.id);
+    if(!player) return bot.sendMessage(msg.chat.id,"❌ Siz bu o'yinda emassiz.");
+    if(!player.role) return bot.sendMessage(msg.chat.id,"⏳ Rolingiz hali aniqlanmagan.");
+    const roleNames={mafia:"🔪 Mafia",doctor:"💊 Doktor",sheriff:"🔫 Sheriff",citizen:"👤 Fuqaro"};
+    return bot.sendMessage(msg.chat.id,`🎭  SIZNING ROLINGIZ\n━━━━━━━━━━━━━━━━━━\n${roleNames[player.role]||player.role}\n━━━━━━━━━━━━━━━━━━`);
+  }
+  async function settings(msg){
+    if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
+    if(!await checkAdmin(bot,msg)) return bot.sendMessage(msg.chat.id,"❌ Faqat admin sozlamalarni o'zgartira oladi.");
+    const chatId=msg.chat.id;
+    const s=groupSettings.get(chatId)||{minPlayers:config.minPlayers,maxPlayers:config.maxPlayers,language:"uz"};
+    const args=msg.text.split(/\s+/).slice(1);
+    if(!args.length){
+      return bot.sendMessage(msg.chat.id,`⚙️  GURUH SOZLAMALARI\n━━━━━━━━━━━━━━━━━━\n👥 Minimal o'yinchi: ${s.minPlayers}\n👥 Maximal o'yinchi: ${s.maxPlayers}\n🌐 Til: ${s.language}\n━━━━━━━━━━━━━━━━━━\nO'zgartirish uchun:\n/settings min 5\n/settings max 30\n/settings lang uz`);
+    }
+    const key=args[0];
+    const val=args[1];
+    if(key==="min"&&val){
+      s.minPlayers=Number(val);
+      groupSettings.set(chatId,s);
+      return bot.sendMessage(msg.chat.id,`✅ Minimal o'yinchi: ${s.minPlayers}`);
+    }
+    if(key==="max"&&val){
+      s.maxPlayers=Number(val);
+      groupSettings.set(chatId,s);
+      return bot.sendMessage(msg.chat.id,`✅ Maximal o'yinchi: ${s.maxPlayers}`);
+    }
+    if(key==="lang"&&val){
+      s.language=val;
+      groupSettings.set(chatId,s);
+      return bot.sendMessage(msg.chat.id,`✅ Til: ${s.language}`);
+    }
+    return bot.sendMessage(msg.chat.id,"❌ Noto'g'ri format.\nUsage: /settings [min|max|lang] [qiymat]");
+  }
+  function getGroupSettings(chatId){return groupSettings.get(chatId)||{minPlayers:config.minPlayers,maxPlayers:config.maxPlayers,language:"uz"};}
   bot.onText(/^\/game(?:@\S+)?$/,msg=>createGame(msg));
   bot.onText(/^\/mafia(?:@\S+)?$/,msg=>createGame(msg));
   bot.onText(/^\/top(?:@\S+)?$/,msg=>showTop(msg));
   bot.onText(/^\/stop(?:@\S+)?$/,msg=>stopGame(msg));
   bot.onText(/^\/end(?:@\S+)?$/,msg=>stopGame(msg));
+  bot.onText(/^\/extend(?:@\S+)?$/,msg=>extendGame(msg));
+  bot.onText(/^\/utag(?:@\S+)?$/,msg=>utagGame(msg));
+  bot.onText(/^\/kick(?:@\S+)?$/,msg=>kickPlayer(msg));
+  bot.onText(/^\/leave(?:@\S+)?$/,msg=>leaveGame(msg));
+  bot.onText(/^\/my_role(?:@\S+)?$/,msg=>myRole(msg));
+  bot.onText(/^\/settings(?:@\S+)?$/,msg=>settings(msg));
 }
 async function getActive(chatId){return await games.getActiveByChat(chatId);}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}

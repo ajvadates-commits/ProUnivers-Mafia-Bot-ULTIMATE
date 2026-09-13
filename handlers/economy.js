@@ -11,6 +11,12 @@ function register({bot,isClone=false}){
    [{text:"💙 Buy VIP",callback_data:"buy:vip"}],[{text:"💜 Buy PRO",callback_data:"buy:pro"}],[{text:"🎁 Premium sticker",callback_data:"buy:premium_sticker"}],...(isClone?[]:[[{text:"🧬 Clone Bot",callback_data:"buy:clone"}]])
   ]}});
  });
+ bot.onText(/^\/pro(?:@\S+)?$/,async msg=>{
+  if(msg.chat.type!=="private")return bot.sendMessage(msg.chat.id,"🔒 Bu buyruq faqat botda ishlaydi.");
+  const stars=await monetization.product("vip");
+  const txt=`💎 PREMIUM (VIP)\n━━━━━━━━━━━━━━━━━━\n⭐ Narxi: ${stars} Stars\n\nVIP afzalliklari:\n- Cheksiz coin\n- Maxsus role\n- O'yindan chiqish\n- Barcha imtiyozlar\n━━━━━━━━━━━━━━━━━━`;
+  await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"💙 Sotib olish",callback_data:"buy:vip"}],[{"text":"⬅️ Orqaga",callback_data:"back:shop"}]]}});
+ });
  bot.on("callback_query",async q=>{
   if(!q.data.startsWith("buy:"))return; const product=q.data.split(":")[1],stars=await monetization.product(product); if(!stars)return;
   await bot.answerCallbackQuery(q.id,{text:"Invoice prepared"});
@@ -21,11 +27,11 @@ function register({bot,isClone=false}){
   if(!msg.successful_payment)return;
   const sp=msg.successful_payment, product=sp.invoice_payload.replace("mafia_","");
   const expected=await monetization.product(product);
-  if(!expected||Number(sp.total_amount)!==Number(expected))return bot.sendMessage(msg.chat.id,"❌ To‘lov summasi mos emas. Owner bilan bog‘laning.");
+  if(!expected||Number(sp.total_amount)!==Number(expected))return bot.sendMessage(msg.chat.id,"❌ To'lov summasi mos emas. Owner bilan bog'laning.");
   const fresh=await economy.recordStarsPurchase(msg.from.id,product,sp.total_amount,sp.telegram_payment_charge_id);
-  if(!fresh)return bot.sendMessage(msg.chat.id,"ℹ️ Bu to‘lov allaqachon qayta ishlangan.");
+  if(!fresh)return bot.sendMessage(msg.chat.id,"ℹ️ Bu to'lov allaqachon qayta ishlangan.");
   if(product==="clone")await require("../database/clones").addCredit(msg.from.id); else await monetization.grant(msg.from.id,product);
-  await bot.sendMessage(msg.chat.id,product==="clone"?`✅ Clone krediti berildi!\n⭐ ${sp.total_amount} Stars\n🧬 /clone orqali tokenni ulab clone yarating.`:`✅ To‘lov qabul qilindi!\n⭐ ${sp.total_amount} Stars\n💎 ${product} aktiv qilindi.`);
+  await bot.sendMessage(msg.chat.id,product==="clone"?`✅ Clone krediti berildi!\n⭐ ${sp.total_amount} Stars\n🧬 /clone orqali tokenni ulab clone yarating.`:`✅ To'lov qabul qilindi!\n⭐ ${sp.total_amount} Stars\n💎 ${product} aktiv qilindi.`);
  });
 }
 module.exports={register};

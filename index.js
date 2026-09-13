@@ -153,18 +153,26 @@ healthServer.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>logger.info(`He
 const bot = new TelegramBot(config.token, { polling: true });
 
 bot.setMyCommands([
-  {command:"start",description:"Ro'yxatdan o'tish"},
-  {command:"game",description:"Mafia o'yinini boshlash"},
-  {command:"mafia",description:"Mafia o'yinini boshlash"},
-  {command:"stop",description:"O'yinni to'xtatish"},
-  {command:"top",description:"Reyting"},
+  {command:"start",description:"Ro'yxatdan o'tish / Botni ishga tushirish"},
+  {command:"game",description:"O'yin boshlash"},
+  {command:"mafia",description:"O'yin boshlash"},
+  {command:"stop",description:"O'yni to'xtatish (admin)"},
+  {command:"extend",description:"Ro'yxat vaqtini uzaytirish (admin)"},
+  {command:"utag",description:"Qo'shilganlarni chaqirish (admin)"},
+  {command:"kick",description:"O'yinchini chiqarish (admin)"},
+  {command:"leave",description:"O'yindan chiqish (Premium)"},
+  {command:"my_role",description:"Joriy rolingiz"},
+  {command:"roles",description:"Barcha rollar"},
+  {command:"settings",description:"Guruh sozlamalari (admin)"},
+  {command:"top",description:"Guruh top o'yinchilari"},
   {command:"checkbot",description:"Bot huquqlarini tekshirish"},
   {command:"help",description:"Yordam"},
 ]).catch(()=>{});
 
 bot.setMyCommands([
   {command:"start",description:"Bosh menyu"},
-  {command:"profile",description:"Profilim"},
+  {command:"profile",description:"Balans va statistika"},
+  {command:"pro",description:"Premium (VIP) sotib olish"},
   {command:"menu",description:"Menyu"},
   {command:"language",description:"Til o'zgartirish"},
   {command:"shop",description:"Do'kon"},
@@ -173,11 +181,18 @@ bot.setMyCommands([
 ],{scope:{type:"BotCommandScopeAllPrivateChats"}}).catch(()=>{});
 
 bot.setMyCommands([
-  {command:"start",description:"Ro'yxatdan o'tish"},
+  {command:"start",description:"Ro'yxatdan o'tish / Botni ishga tushirish"},
   {command:"game",description:"O'yin boshlash"},
   {command:"mafia",description:"O'yin boshlash"},
-  {command:"stop",description:"O'yinni to'xtatish"},
-  {command:"top",description:"Reyting"},
+  {command:"stop",description:"O'yni to'xtatish (admin)"},
+  {command:"extend",description:"Ro'yxat vaqtini uzaytirish (admin)"},
+  {command:"utag",description:"Qo'shilganlarni chaqirish (admin)"},
+  {command:"kick",description:"O'yinchini chiqarish (admin)"},
+  {command:"leave",description:"O'yindan chiqish (Premium)"},
+  {command:"my_role",description:"Joriy rolingiz"},
+  {command:"roles",description:"Barcha rollar"},
+  {command:"settings",description:"Guruh sozlamalari (admin)"},
+  {command:"top",description:"Guruh top o'yinchilari"},
   {command:"checkbot",description:"Bot huquqlarini tekshirish"},
   {command:"help",description:"Yordam"},
 ],{scope:{type:"BotCommandScopeAllGroupChats"}}).catch(()=>{});
