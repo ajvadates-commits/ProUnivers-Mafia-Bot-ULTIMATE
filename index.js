@@ -129,6 +129,16 @@ const healthServer = http.createServer((req,res)=>{
 healthServer.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>logger.info(`Health+MiniApp server listening on ${process.env.PORT||3000}`));
 
 const bot = new TelegramBot(config.token, { polling: true });
+
+bot.setMyCommands([
+  {command:"start",description:"Ro'yxatdan o'tish"},
+  {command:"game",description:"Mafia o'yinini boshlash"},
+  {command:"mafia",description:"Mafia o'yinini boshlash"},
+  {command:"stop",description:"O'yinni to'xtatish"},
+  {command:"top",description:"Reyting"},
+  {command:"help",description:"Yordam"},
+]).catch(()=>{});
+
 const ctx = { bot, db, config, logger, advancedSuite };
 
 start.register(ctx);
