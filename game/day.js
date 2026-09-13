@@ -13,7 +13,7 @@ function nightResult(game,killed,healed,detected){
     const name=killed.first_name||killed.username||killed.id;
     msg+=`💀  ${name} vaxshiylarcha o'ldirildi!\nAytishlaricha unikiga 🤵🏻 Don kelgan\n`;
   }else if(healed){
-    msg+=`✨  Kimdir himoyasini ishlatdi!\nO'lim oldini olindi!\n`;
+    msg+=`  Kimdir himoyasini ishlatdi!\nO'lim oldini olindi!\n`;
   }else{
     msg+=`🌙  Tunda hech kim o'lmadi...\nShahar tinch o'tdi\n`;
   }
