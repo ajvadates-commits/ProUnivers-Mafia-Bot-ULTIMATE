@@ -1,6 +1,7 @@
 const crypto=require("crypto");
 const users=require("../database/users");
 const games=require("../database/games");
+const {cardText}=require("./roles");
 const groups=require("../database/groups");
 const config=require("../config");
 const botRights=require("../services/botRights");
@@ -170,8 +171,9 @@ function register({bot,cloneId=0}) {
     const player=players.find(p=>p.id===msg.from.id);
     if(!player) return bot.sendMessage(msg.chat.id,"❌ Siz bu o'yinda emassiz.");
     if(!player.role) return bot.sendMessage(msg.chat.id,"⏳ Rolingiz hali aniqlanmagan.");
-    const roleNames={mafia:"🔪 Mafia",doctor:"💊 Doktor",sheriff:"🔫 Sheriff",citizen:"👤 Fuqaro"};
-    return bot.sendMessage(msg.chat.id,`🎭  SIZNING ROLINGIZ\n━━━━━━━━━━━━━━━━━━\n${roleNames[player.role]||player.role}\n━━━━━━━━━━━━━━━━━━`);
+    const card=cardText(player.role);
+    if(!card) return bot.sendMessage(msg.chat.id,"⏳ Rolingiz hali aniqlanmagan.");
+    return bot.sendMessage(msg.chat.id,card);
   }
   async function settings(msg){
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"❌ Bu buyruq faqat guruhlarda ishlaydi.");
