@@ -75,7 +75,8 @@ const healthServer = http.createServer((req,res)=>{
         level:row?.level||1,xp:row?.xp||0,xpNeeded:(row?.level||1)*100,
         coins:row?.coins||0,money:row?.money||0,diamonds:row?.diamonds||0,
         games:row?.games||0,wins:row?.wins||0,losses:row?.losses||0,
-        winRate:row&&row.games>0?Math.round(row.wins/row.games*100):0
+        winRate:row&&row.games>0?Math.round(row.wins/row.games*100):0,
+        isOwner:(config.ownerIds||[]).includes(Number(id))
       };
       try{await db.prepare("INSERT INTO users(id,username,first_name,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET username=excluded.username,first_name=excluded.first_name,updated_at=CURRENT_TIMESTAMP").run(Number(id),u.username,u.first_name);}catch(_){}
       json({ok:true,user:u});
@@ -122,6 +123,27 @@ const healthServer = http.createServer((req,res)=>{
     let gifs={};
     try{gifs=JSON.parse(fs.readFileSync(path.join(__dirname,"gif_ids.json"),"utf8"));}catch(_){}
     json({ok:true,gifs:gifs});
+    return;
+  }
+  if(url==="/app/api/owner"){
+    const initData=(req.url||"").split("?")[1]||"";
+    const qs=new URLSearchParams(initData);
+    const uid=Number(qs.get("user_id")||0);
+    if(!(config.ownerIds||[]).includes(uid)){json({ok:false,error:"Not owner"});return;}
+    (async()=>{
+      const stats={users:0,games:0,wins:0,revenue:0,activeGames:0,banned:0};
+      try{stats.users=(await db.prepare("SELECT COUNT(*) as c FROM users").get()).c;}catch(_){}
+      try{stats.games=(await db.prepare("SELECT COUNT(*) as c FROM games").get()).c;}catch(_){}
+      try{stats.wins=(await db.prepare("SELECT SUM(wins) as c FROM users").get()).c||0;}catch(_){}
+      try{stats.revenue=(await db.prepare("SELECT stars_balance FROM bot_wallet WHERE id=1").get())?.stars_balance||0;}catch(_){}
+      try{stats.activeGames=(await db.prepare("SELECT COUNT(*) as c FROM games WHERE state IN ('lobby','running')").get()).c;}catch(_){}
+      try{stats.banned=(await db.prepare("SELECT COUNT(*) as c FROM banned_users").get()).c;}catch(_){}
+      let recentGames=[];
+      try{recentGames=await db.prepare("SELECT g.id,g.chat_id,g.state,g.phase,g.created_at FROM games g ORDER BY g.created_at DESC LIMIT 10").all();}catch(_){}
+      let topUsers=[];
+      try{topUsers=await db.prepare("SELECT id,first_name,username,wins,level,coins FROM users ORDER BY wins DESC LIMIT 10").all();}catch(_){}
+      json({ok:true,stats,recentGames,topUsers});
+    })();
     return;
   }
   json({status:"ok",service:"mafia-bot",path:req.url||"/",time:new Date().toISOString()});

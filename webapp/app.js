@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e4?(n/1e3).toFixed(1)+"K":String(n);
 const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML;};
-let me=null,D={},activeTab="profile",particles=[],confettis=[];
+let me=null,D={},activeTab="profile",particles=[],confettis=[],isOwner=false;
 if(window.Telegram&&window.Telegram.WebApp){
   try{me=Telegram.WebApp.initDataUnsafe.user||null;Telegram.WebApp.ready();Telegram.WebApp.expand();
   if(Telegram.WebApp.setHeaderColor)Telegram.WebApp.setHeaderColor("#080b16");
@@ -156,7 +156,9 @@ function renderProfile(u){
   $("xp").style.width=pct+"%";
   setTimeout(()=>{countAnim($("k1"),u.coins||0);countAnim($("k2"),u.games||0);countAnim($("k3"),u.wins||0);},300);
   if(me){const n=$("mode");n.textContent="LIVE";n.className="badge live anim-pop";}
+  if(u.isOwner){const n=$("mode");n.textContent="OWNER";n.className="badge anim-pop";n.style.background="rgba(251,191,36,.12)";n.style.color="#fbbf24";n.style.border="1px solid rgba(251,191,36,.18)";}
   return "<div class='anim-tab'><div class='card card-enter'><div class='inner'>"+
+    (u.isOwner?"<div style='text-align:center;margin-bottom:8px'><span style='font-size:20px'>&#9733;</span><span style='font-size:11px;color:#fbbf24;font-weight:700;margin-left:4px'>VIP OWNER</span></div>":"")+
     "<div class='stat-row'><span class='k'>Coin</span><span class='v'>"+fmt(u.coins||0)+"</span></div>"+
     "<div class='stat-row'><span class='k'>Olmos</span><span class='v'>"+fmt(u.diamonds||0)+"</span></div>"+
     "<div class='stat-row'><span class='k'>G'alaba nisbati</span><span class='v'>"+(u.winRate||0)+"%</span></div>"+
@@ -222,6 +224,42 @@ function renderActivity(list){
   return html;
 }
 
+// ===== OWNER RENDER =====
+function renderOwner(data){
+  if(!data||!data.ok) return "<div class='anim-tab'><div class='empty'><div class='ico ico-glow anim-float'>&#9733;</div>Ma'lumot topilmadi</div></div>";
+  const s=data.stats;
+  const html="<div class='anim-tab'>"+
+    "<div class='card card-enter'><div class='inner'>"+
+    "<div style='text-align:center;margin-bottom:12px'><span style='font-size:24px'>&#9733;</span><div style='font-size:14px;font-weight:700;color:var(--gold);margin-top:4px'>OWNER PANEL</div></div>"+
+    "<div class='stat-row'><span class='k'>👥 Foydalanuvchilar</span><span class='v'>"+fmt(s.users)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>🎮 Jami o'yinlar</span><span class='v'>"+fmt(s.games)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>🏆 Jami g'alabalar</span><span class='v'>"+fmt(s.wins)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>⭐ Stars</span><span class='v'>"+fmt(s.revenue)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>🟢 Faol o'yinlar</span><span class='v'>"+fmt(s.activeGames)+"</span></div>"+
+    "<div class='stat-row'><span class='k'>🔨 Banlanganlar</span><span class='v'>"+fmt(s.banned)+"</span></div>"+
+    "</div></div>"+
+    (data.topUsers&&data.topUsers.length?
+    "<div class='card card-enter' style='animation-delay:.1s'><div class='inner'>"+
+    "<div style='font-size:12px;font-weight:600;color:var(--dim);margin-bottom:8px'>TOP 10 FOYDALANUVCHILAR</div>"+
+    data.topUsers.map((u,i)=>{
+      const name=u.username?"@"+u.username:(u.first_name||"O'yinchi");
+      return "<div class='stat-row'><span class='k'>"+(i+1)+". "+esc(name)+"</span><span class='v'>"+fmt(u.wins||0)+" W · Lv."+(u.level||1)+"</span></div>";
+    }).join("")+
+    "</div></div>":"")+
+    (data.recentGames&&data.recentGames.length?
+    "<div class='card card-enter' style='animation-delay:.2s'><div class='inner'>"+
+    "<div style='font-size:12px;font-weight:600;color:var(--dim);margin-bottom:8px'>OXIRGI 10 O'YIN</div>"+
+    data.recentGames.map(g=>{
+      const state=g.state==="lobby"?"⏳ Lobby":g.state==="running"?"🟢 Faol":"🔴 Tugagan";
+      const time=g.created_at?new Date(g.created_at).toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"}):"";
+      return "<div class='stat-row'><span class='k'>"+state+"</span><span class='v'>"+time+"</span></div>";
+    }).join("")+
+    "</div></div>":"")+
+    "</div>";
+  setTimeout(()=>{staggerCards(document.getElementById("ct"));document.querySelectorAll(".card").forEach(addTilt);},50);
+  return html;
+}
+
 // ===== RENDER TAB =====
 function renderTab(){
   const ct=$("ct");
@@ -229,16 +267,22 @@ function renderTab(){
   else if(activeTab==="groups")ct.innerHTML=D._groups||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
   else if(activeTab==="top")ct.innerHTML=D._top||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
   else if(activeTab==="activity")ct.innerHTML=D._activity||"<div class='anim-tab shimmer' style='height:100px;border-radius:14px'></div>";
+  else if(activeTab==="owner")ct.innerHTML=D._owner||"<div class='anim-tab shimmer' style='height:200px;border-radius:14px'></div>";
 }
 
 // ===== BOOT =====
 async function boot(){
   const uid=me?me.id:0;
   const idp=me&&Telegram.WebApp.initData?Telegram.WebApp.initData:"";
-  const base={first_name:"Demo o'yinchi",username:"topmafia_uzbot",photo_url:null,level:1,xp:0,coins:0,games:0,wins:0,losses:0,winRate:0,diamonds:0};
+  const base={first_name:"Demo o'yinchi",username:"topmafia_uzbot",photo_url:null,level:1,xp:0,coins:0,games:0,wins:0,losses:0,winRate:0,diamonds:0,isOwner:false};
   let u=base;
   try{const r=await fetch(API+"/profile?id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();if(j.ok&&j.user)u=Object.assign({},base,j.user);}catch(_){}
+  isOwner=u.isOwner;
   D._profile=renderProfile(u);
+  if(isOwner){
+    $("ownerTab").style.display="";
+    try{const r=await fetch(API+"/owner?user_id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();D._owner=renderOwner(j);}catch(_){D._owner=renderOwner({ok:false});}
+  }
   try{const r=await fetch(API+"/groups?user_id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();D._groups=renderGroups(j.groups||[]);}catch(_){D._groups=renderGroups([]);}
   try{const r=await fetch(API+"/leaderboard");const j=await r.json();D._top=renderTop(j.top||[]);}catch(_){D._top=renderTop([]);}
   try{const r=await fetch(API+"/activity?user_id="+uid+"&initData="+encodeURIComponent(idp));const j=await r.json();D._activity=renderActivity(j.activity||[]);}catch(_){D._activity=renderActivity([]);}
