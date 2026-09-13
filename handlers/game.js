@@ -48,9 +48,22 @@ function register({bot,cloneId=0}) {
     const txt=`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`;
     return bot.sendMessage(msg.chat.id,txt);
   }
+  async function stopGame(msg){
+    if(msg.chat.type==="private") return;
+    if(!await isAdmin(bot,msg.chat.id,msg.from.id)){
+      return bot.sendMessage(msg.chat.id,"⛔ Faqat guruh adminlari o'yinni to'xtata oladi.");
+    }
+    const g=await getActive(msg.chat.id);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
+    try{await games.update(g.id,{state:"ended",phase:"ended"});}catch(_){}
+    active.delete(msg.chat.id);
+    return bot.sendMessage(msg.chat.id,"🛑  O'yin to'xtatildi!\n━━━━━━━━━━━━━━━━━━\nAdmin tomonidan majburiy tugatildi.\n━━━━━━━━━━━━━━━━━━");
+  }
   bot.onText(/^\/game$/,msg=>createGame(msg));
   bot.onText(/^\/mafia$/,msg=>createGame(msg));
   bot.onText(/^\/top$/,msg=>showTop(msg));
+  bot.onText(/^\/stop$/,msg=>stopGame(msg));
+  bot.onText(/^\/end$/,msg=>stopGame(msg));
 }
 async function getActive(chatId){const id=active.get(chatId);return id?await games.get(id):null;}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}
