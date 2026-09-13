@@ -118,6 +118,12 @@ const healthServer = http.createServer((req,res)=>{
     })();
     return;
   }
+  if(url==="/app/api/gifs"){
+    let gifs={};
+    try{gifs=JSON.parse(fs.readFileSync(path.join(__dirname,"gif_ids.json"),"utf8"));}catch(_){}
+    json({ok:true,gifs:gifs});
+    return;
+  }
   json({status:"ok",service:"mafia-bot",path:req.url||"/",time:new Date().toISOString()});
 });
 healthServer.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>logger.info(`Health+MiniApp server listening on ${process.env.PORT||3000}`));
