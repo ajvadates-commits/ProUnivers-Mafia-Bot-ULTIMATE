@@ -14,4 +14,4 @@ async function addPlayer(gameId,userId) { await db.prepare("INSERT OR IGNORE INT
 async function players(gameId) { return await db.prepare(`SELECT gp.*,u.username,u.first_name FROM game_players gp JOIN users u ON u.id=gp.user_id WHERE gp.game_id=?`).all(gameId); }
 async function setRole(gameId,userId,role) { await db.prepare("UPDATE game_players SET role=? WHERE game_id=? AND user_id=?").run(role,gameId,userId); }
 async function kill(gameId,userId) { await db.prepare("UPDATE game_players SET alive=0 WHERE game_id=? AND user_id=?").run(gameId,userId); }
-module.exports={create,get,update,addPlayer,players,setRole,kill};
+module.exports={create,get,getActiveByChat,update,addPlayer,players,setRole,kill};
