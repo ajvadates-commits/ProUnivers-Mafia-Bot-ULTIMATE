@@ -18,11 +18,6 @@ function register({bot,cloneId=0}) {
       if(existing.find(p=>p.id===msg.from.id)) return bot.sendMessage(msg.chat.id,"✅ Siz allaqachon o'yinga qo'shilgansiz!");
       await require("../database/games").addPlayer(g.id,msg.from.id);
       await bot.sendMessage(msg.chat.id,"✅  O'YINGA QO'SHILDINGIZ!\n━━━━━━━━━━━━━━━━━━\n🎭  Mafia o'yini boshlanishini kuting.\n━━━━━━━━━━━━━━━━━━");
-      const players=await require("../database/games").players(g.id);
-      const playerList=players.map((u,i)=>{const n=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");return `  ${i+1}. ${n}`;}).join("\n");
-      const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
-      const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
-      try{await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":`👥  ${players.length} o'yinchi`,callback_data:"noop"}],[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
       return;
     }
     const u=await users.get(msg.from.id);
