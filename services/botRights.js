@@ -2,14 +2,13 @@ const db=require("../database");
 const config=require("../config");
 const REQUIRED=[
   ["can_manage_chat","⚙️ Chat boshqaruvi"],
-  ["can_delete_messages","🗑 Xabar o‘chirish"],
+  ["can_delete_messages","🗑 Xabar o'chirish"],
   ["can_manage_video_chats","🎥 Video chat boshqarish"],
   ["can_restrict_members","🔨 Banlash"],
-  ["can_promote_members","🛡 Admin qo‘shish"],
-  ["can_change_info","✏️ Guruh ma’lumotini o‘zgartirish"],
+  ["can_promote_members","🛡 Admin qo'shish"],
+  ["can_change_info","✏️ Guruh ma'lumotini o'zgartirish"],
   ["can_invite_users","👥 User taklif qilish"],
-  ["can_pin_messages","📌 Xabar pin qilish"],
-  ["can_manage_topics","🧵 Topic boshqarish"]
+  ["can_pin_messages","📌 Xabar pin qilish"]
 ];
 async function check(bot,chatId){
   const me=await bot.getMe();
