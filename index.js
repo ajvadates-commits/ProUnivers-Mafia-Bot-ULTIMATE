@@ -203,6 +203,7 @@ start.register(ctx);
 profile.register(ctx);
 language.register(ctx);
 game.register(ctx);
+roles.register(ctx);
 callback.register(ctx);
 admin.register(ctx);
 economy.register(ctx);
