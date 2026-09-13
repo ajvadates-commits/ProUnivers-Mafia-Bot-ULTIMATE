@@ -8,6 +8,22 @@ const cloneActivity=require("../services/cloneActivity");
 const db=require("../database");
 const active=new Map();
 function register({bot,cloneId=0}) {
+  bot.onText(/^\/start\s+join_(-?\d+)$/,async msg=>{
+    if(msg.chat.type!=="private") return;
+    const chatId=Number(msg.match[1]);
+    await users.upsert(msg.from);
+    const g=await getActive(chatId);
+    if(!g) return bot.sendMessage(msg.chat.id,"❌ O'yin tugagan yoki mavjud emas.");
+    const existing=await games.players(g.id);
+    if(existing.find(p=>p.id===msg.from.id)) return bot.sendMessage(msg.chat.id,"✅ Siz allaqachon o'yinga qo'shilgansiz!");
+    await games.addPlayer(g.id,msg.from.id);
+    await bot.sendMessage(msg.chat.id,"✅  O'YINGA QO'SHILDINGIZ!\n━━━━━━━━━━━━━━━━━━\n🎭  Mafia o'yini boshlanishini kuting.\n━━━━━━━━━━━━━━━━━━");
+    const players=await games.players(g.id);
+    const playerList=players.map((u,i)=>`  ${i+1}. ${u.username?"@"+u.username:u.first_name||u.id}`).join("\n");
+    const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
+    const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
+    try{await bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":`👥  ${players.length} o'yinchi`,callback_data:"noop"}],[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
+  });
   async function createGame(msg){
     await users.upsert(msg.from);
     if(msg.chat.type==="private") return bot.sendMessage(msg.chat.id,"🎭 Mafia o'yini faqat guruhlarda ishlaydi!");
@@ -25,21 +41,6 @@ function register({bot,cloneId=0}) {
       return bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  QO'SHILISH","url":btn}]]}});
     }catch(e){return bot.sendMessage(msg.chat.id,"❌ Xatolik.");}
   }
-  async function joinFromPrivate(msg,chatId){
-    await users.upsert(msg.from);
-    const g=await getActive(chatId);
-    if(!g) return bot.sendMessage(msg.chat.id,"❌ O'yin tugagan yoki mavjud emas.");
-    const existing=await games.players(g.id);
-    if(existing.find(p=>p.id===msg.from.id)) return bot.sendMessage(msg.chat.id,"✅ Siz allaqachon o'yinga qo'shilgansiz!");
-    await games.addPlayer(g.id,msg.from.id);
-    const name=msg.from.username?"@"+msg.from.username:msg.from.first_name||"O'yinchi";
-    await bot.sendMessage(msg.chat.id,`✅  O'YINGA QO'SHILDINGIZ!\n━━━━━━━━━━━━━━━━━━\n🎭  Mafia o'yini boshlanishini kuting.\n━━━━━━━━━━━━━━━━━━`);
-    const players=await games.players(g.id);
-    const playerList=players.map((u,i)=>`  ${i+1}. ${u.username?"@"+u.username:u.first_name||u.id}`).join("\n");
-    const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  ${players.length}/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n${playerList}\n━━━━━━━━━━━━━━━━━━`;
-    const btn=`https://t.me/topmafia_uzbot?start=join_${chatId}`;
-    try{await bot.sendMessage(chatId,txt,{reply_markup:{inline_keyboard:[[{"text":`👥  ${players.length} o'yinchi`,callback_data:"noop"}],[{"text":"🎯  QO'SHILISH","url":btn}]]}});}catch(_){}
-  }
   async function stopGame(msg){
     if(msg.chat.type==="private") return;
     const g=await getActive(msg.chat.id);
@@ -55,7 +56,7 @@ function register({bot,cloneId=0}) {
     if(!top.length) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
     const lines=top.map((u,i)=>{
       const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
-      const name=u.first_name||u.username||u.id;
+      const name=u.username?"@"+u.username:u.first_name||u.id;
       return `  ${medal} ${name}\n      💰 ${u.wins||0} g'alaba  ·  ⭐ Lv.${u.level||1}`;
     }).join("\n\n");
     return bot.sendMessage(msg.chat.id,`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
@@ -65,10 +66,6 @@ function register({bot,cloneId=0}) {
   bot.onText(/^\/top$/,msg=>showTop(msg));
   bot.onText(/^\/stop$/,msg=>stopGame(msg));
   bot.onText(/^\/end$/,msg=>stopGame(msg));
-  bot.onText(/^\/start\s+join_(-?\d+)$/,async msg=>{
-    const chatId=Number(msg.match[1]);
-    await joinFromPrivate(msg,chatId);
-  });
 }
 async function getActive(chatId){const id=active.get(chatId);return id?await games.get(id):null;}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}
