@@ -77,13 +77,21 @@ function register({bot,cloneId=0}) {
   async function showTop(msg){
     if(msg.chat.type==="private") return;
     let top=[];
-    try{top=await db.prepare("SELECT id,first_name,username,wins,level,xp,games FROM users ORDER BY wins DESC,xp DESC LIMIT 10").all();}catch(e){}
+    try{top=await db.prepare(`
+      SELECT u.id,u.first_name,u.username,u.wins,u.level,u.xp,u.games
+      FROM users u
+      INNER JOIN game_players gp ON gp.user_id=u.id
+      INNER JOIN games g ON g.id=gp.game_id AND g.chat_id=?
+      GROUP BY u.id
+      ORDER BY u.wins DESC,u.xp DESC LIMIT 10
+    `).all(msg.chat.id);}catch(e){}
     if(!top.length) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
-    const lines=top.map((u,i)=>{
+    const lines=top.filter(u=>u.username!=="GroupAnonymousBot").map((u,i)=>{
       const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
       const name=(u.username&&u.username!=="GroupAnonymousBot")?"@"+u.username:(u.first_name||"O'yinchi");
       return `  ${medal} ${name}\n      💰 ${u.wins||0} g'alaba  ·  ⭐ Lv.${u.level||1}`;
     }).join("\n\n");
+    if(!lines) return bot.sendMessage(msg.chat.id,"🏆 Hali reyting yo'q.");
     return bot.sendMessage(msg.chat.id,`🏆  TOP O'YINCHILAR\n━━━━━━━━━━━━━━━━━━\n${lines}\n━━━━━━━━━━━━━━━━━━`);
   }
   bot.onText(/^\/game(?:@\S+)?$/,msg=>createGame(msg));
