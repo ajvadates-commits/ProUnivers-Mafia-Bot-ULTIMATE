@@ -1,2 +1,8 @@
-function register({bot}){bot.onText(/^\/help$/,msg=>bot.sendMessage(msg.chat.id,`🎭 Mafia Bot\n/mafia — lobby ochish\n/profile — profil\n/shop — VIP, PRO, sticker, clone Stars do‘koni\n/clone — 100 Stars clone krediti bilan bot tokenini ulash\n/buttons — tugmalar qo‘llanmasi\n/roles — rollar\n/admin — ruxsat berilgan admin paneli\n/owner — owner paneli\n/givevip USER_ID — VIP\n/givepro USER_ID — PRO\n/ban USER_ID [sabab] — ban\n/unban USER_ID — unban\n/addchannel CHAT_ID|TITLE|LINK — majburiy kanal\n/removechannel CHAT_ID — majburiy kanalni olish`));}
+function register({bot}){bot.onText(/^\/help$/,msg=>{
+  const isGroup=msg.chat.type!=="private";
+  if(isGroup){
+    return bot.sendMessage(msg.chat.id,`🎭  MAFIA BOT — YORDMA\n━━━━━━━━━━━━━━━━━━\n/game — o'yin boshlash\n/start — ro'yxatdan o'tish\n/top — reyting (admin)\n/help — yordma\n━━━━━━━━━━━━━━━━━━`);
+  }
+  return bot.sendMessage(msg.chat.id,`🎭  MAFIA BOT — YORDMA\n━━━━━━━━━━━━━━━━━━\n🎮  O'YIN:\n/game — guruhda o'yin boshlash\n/start — ro'yxatdan o'tish\n\n👤  SHAXSIY:\n/profile — profil\n/shop — VIP, PRO do'kon\n/buttons — tugmalar\n/roles — rollar\n/referrals — takliflar\n\n🛡  ADMIN:\n/admin — admin panel\n/ban USER_ID — ban\n/unban USER_ID — ban olish\n/givevip USER_ID — VIP berish\n/givepro USER_ID — PRO berish\n\n👑  OWNER:\n/owner — owner panel\n/clone — clone bot\n/addadmin USER_ID — admin qo'shish\n/setprice money 15 — narx\n━━━━━━━━━━━━━━━━━━`);
+});}
 module.exports={register};
