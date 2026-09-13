@@ -10,6 +10,7 @@ const start = require("./handlers/start");
 const profile = require("./handlers/profile");
 const language = require("./handlers/language");
 const game = require("./handlers/game");
+const roles = require("./handlers/roles");
 const callback = require("./handlers/callback");
 const admin = require("./handlers/admin");
 const economy = require("./handlers/economy");
