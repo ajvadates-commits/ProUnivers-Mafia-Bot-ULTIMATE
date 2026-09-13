@@ -13,4 +13,23 @@ function resolve(game){
   if(kill&&kill!==heal)game.kill(kill);
   game.nextPhase();
 }
-module.exports={validateAction,resolve};
+function actionText(role,target){
+  const name=target.first_name||target.username||target.id;
+  const texts={
+    mafia:`🤵🏻  Don navbatdagi o'ljasini tanladi...`,
+    don:`🤵🏻  Don navbatdagi o'ljasini tanladi...`,
+    doctor:`👨🏼‍⚕️  Doktor tungi navbatchilikga ketdi...`,
+    detective:`🕵🏼  Komissar katani pistoletini o'qladi...`,
+    journalist:`👩🏼‍💻  Jurnalist intervyu olish uchun ketti...`,
+    lawyer:`👨🏼‍💼  Advokat Mafiani himoya qilish uchun qidiryapti...`,
+    wanderer:`💃  Kezuvchining qandaydir mehmoni bor ekan...`,
+    wolf:`🐺  Bo'ri o'z ovini qidirmoqda...`,
+    zealot:`🧟  G'azabkor navbatdagi o'ljasini tanladi...`,
+    sorcerer:`🧙‍  Sehrgar sehrini o'qimoqda...`,
+    tramp:`🧙🏼  Daydi kimnikigadir ichkilik butilka olish uchun ketdi...`,
+    seriff:`👮🏼  Serjant postga ketti...`,
+    bomber:`💣  Afsungar o'zAfslarini tayyorlamoqda...`
+  };
+  return texts[role]||`🎭  ${name} nima qilyapti...`;
+}
+module.exports={validateAction,resolve,actionText};
