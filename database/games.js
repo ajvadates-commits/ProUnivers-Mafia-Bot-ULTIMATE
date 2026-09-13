@@ -1,6 +1,7 @@
 const db = require("../database");
 async function create(id,chatId) { await db.prepare("INSERT INTO games(id,chat_id,state,phase) VALUES(?,?,?,?)").run(id,chatId,"lobby","lobby"); }
 async function get(id) { return await db.prepare("SELECT * FROM games WHERE id=?").get(id); }
+async function getActiveByChat(chatId) { return await db.prepare("SELECT * FROM games WHERE chat_id=? AND state IN ('lobby','running') ORDER BY created_at DESC LIMIT 1").get(chatId); }
 async function update(id,fields) {
   const allowed = ["state","phase","ended_at"];
   const pairs = Object.keys(fields).filter(k=>allowed.includes(k));

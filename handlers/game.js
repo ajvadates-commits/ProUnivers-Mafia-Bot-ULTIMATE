@@ -6,7 +6,6 @@ const config=require("../config");
 const botRights=require("../services/botRights");
 const cloneActivity=require("../services/cloneActivity");
 const db=require("../database");
-const active=new Map();
 function register({bot,cloneId=0}) {
   bot.on("message",async msg=>{
     if(!msg.text)return;
@@ -17,13 +16,13 @@ function register({bot,cloneId=0}) {
       if(msg.from.id===1087968824) return;
       const chatId=Number(gameMatch[1]);
       await users.upsert(msg.from);
-      if(active.has(chatId)) return bot.sendMessage(msg.chat.id,"⏳ Bu guruhda allaqachon faol lobby mavjud.");
+      const existing=await games.getActiveByChat(chatId);
+      if(existing) return bot.sendMessage(msg.chat.id,"⏳ Bu guruhda allaqachon faol lobby mavjud.");
       await groups.upsert(chatId,"");
       try{
         const r=await botRights.check(bot,chatId);
         if(!r.ok) return bot.sendMessage(msg.chat.id,"❌ Bot guruhda yetarli huquqlarga ega emas.");
         const id=crypto.randomUUID(); await games.create(id,chatId); await games.addPlayer(id,msg.from.id);
-        active.set(chatId,id);
         const name=(msg.from.username&&msg.from.username!=="GroupAnonymousBot")?"@"+msg.from.username:(msg.from.first_name||"O'yinchi");
         await bot.sendMessage(msg.chat.id,"✅  Lobby yaratildi! Guruhga qarang.");
         const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
@@ -59,9 +58,9 @@ function register({bot,cloneId=0}) {
       const r=await botRights.check(bot,msg.chat.id);
       await botRights.audit(msg.chat.id,null,r);
       if(!r.ok) return bot.sendMessage(msg.chat.id,botRights.text(r));
-      if(active.has(msg.chat.id)) return bot.sendMessage(msg.chat.id,"⏳ Faol lobby mavjud.");
+      const existing=await games.getActiveByChat(msg.chat.id);
+      if(existing) return bot.sendMessage(msg.chat.id,"⏳ Faol lobby mavjud.");
       const id=crypto.randomUUID(); await games.create(id,msg.chat.id); await games.addPlayer(id,msg.from.id); cloneActivity.track(cloneId,"game_start",msg);
-      active.set(msg.chat.id,id);
       const name=(msg.from.username&&msg.from.username!=="GroupAnonymousBot")?"@"+msg.from.username:(msg.from.first_name||"O'yinchi");
       const txt=`🎭  MAFIA LOBBY\n━━━━━━━━━━━━━━━━━━\n👥  1/${config.maxPlayers}\n━━━━━━━━━━━━━━━━━━\n  1. ${name}\n━━━━━━━━━━━━━━━━━━`;
       const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
@@ -73,7 +72,6 @@ function register({bot,cloneId=0}) {
     const g=await getActive(msg.chat.id);
     if(!g) return bot.sendMessage(msg.chat.id,"❌ Faol o'yin yo'q.");
     try{await games.update(g.id,{state:"ended",phase:"ended"});}catch(_){}
-    active.delete(msg.chat.id);
     return bot.sendMessage(msg.chat.id,"🛑  O'yin to'xtatildi!");
   }
   async function showTop(msg){
@@ -94,6 +92,6 @@ function register({bot,cloneId=0}) {
   bot.onText(/^\/stop(?:@\S+)?$/,msg=>stopGame(msg));
   bot.onText(/^\/end(?:@\S+)?$/,msg=>stopGame(msg));
 }
-async function getActive(chatId){const id=active.get(chatId);return id?await games.get(id):null;}
+async function getActive(chatId){return await games.getActiveByChat(chatId);}
 async function join(chatId,userId){const g=await getActive(chatId);if(!g)return null; await users.upsert({id:userId}); await games.addPlayer(g.id,userId); return games.players(g.id);}
 module.exports={register,getActive,join};
