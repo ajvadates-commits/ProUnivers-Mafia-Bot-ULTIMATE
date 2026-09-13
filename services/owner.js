@@ -4,7 +4,7 @@ const groups=require("../database/groups");
 const economy=require("../services/economy");
 const monetization=require("./monetization");
 const roleCatalog=require("../game/roleCatalog");
-function isOwner(id){return Number(id)===Number(config.ownerId)&&Number(config.ownerId)>0;}
+function isOwner(id){const n=Number(id);if(config.ownerIds)return config.ownerIds.includes(n);return n===Number(config.ownerId)&&Number(config.ownerId)>0;}
 function isAdmin(id){return isOwner(id)||config.admins.includes(Number(id));}
 async function dashboard(){
  const s=await stats.totals();

@@ -4,7 +4,7 @@ const admins=require('../database/admins');
 const prices=require('../services/economyPrices');
 const config=require('../config');
 const {randomInt}=require('crypto');
-function owner(id,ownerId){return Number(id)===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0}
+function owner(id,ownerId){const n=Number(id);if(config.ownerIds)return config.ownerIds.includes(n);return n===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0}
 function register({bot,ownerId=config.ownerId,isClone=false}){
  if(isClone)return;
  const pending=new Map();

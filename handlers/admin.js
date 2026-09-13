@@ -6,7 +6,7 @@ const moderation=require('../database/moderation');
 const monetization=require('../services/monetization');
 const groups=require('../database/groups');
 const dbAdmins=require('../database/admins');
-function owner(id,ownerId){return Number(id)===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0;}
+function owner(id,ownerId){const n=Number(id);if(config.ownerIds)return config.ownerIds.includes(n);return n===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0;}
 async function allowed(id,p,ownerId){return owner(id,ownerId)||(await perms.can(id,p,ownerId||config.ownerId));}
 async function keyboard(id,ownerId){const rows=[];for(const [p,t] of [['stats','📊 Statistics'],['users','👥 Users'],['games','🎮 Games'],['economy','💰 Economy'],['vip','💎 VIP/PRO'],['ban','🔨 Ban'],['channels','📢 Channels'],['broadcast','📣 Broadcast'],['clones','🧬 Clones'],['roles','🎭 Roles']])if(await allowed(id,p,ownerId))rows.push([{text:t,callback_data:`adminpanel:${p}`}]);return{inline_keyboard:rows};}
 function register({bot,ownerId=config.ownerId,cloneId=0}){

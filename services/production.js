@@ -4,7 +4,11 @@ const db = require('../database');
 const admins = require('../database/admins');
 
 function ownerId(config){ return Number(config.ownerId || 0); }
-function isOwner(userId, config){ return Number(userId) === ownerId(config) && ownerId(config) > 0; }
+function isOwner(userId, config){
+  const id=Number(userId);
+  if(config&&config.ownerIds) return config.ownerIds.includes(id);
+  return id === ownerId(config) && ownerId(config) > 0;
+}
 async function can(userId, perm, config){ return isOwner(userId, config) || (await admins.has(userId, ownerId(config), perm)); }
 async function audit(actor, action, target='', meta={}){
   await db.prepare('INSERT INTO admin_audit(actor_id,action,target_id,meta) VALUES(?,?,?,?)').run(Number(actor), action, String(target||''), JSON.stringify(meta));

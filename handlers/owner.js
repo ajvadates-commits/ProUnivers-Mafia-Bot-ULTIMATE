@@ -22,7 +22,7 @@ function cloneOwnerPanel(){return{inline_keyboard:[
  [{text:'🛡 Admins',callback_data:'owner:admins'},{text:'🎭 Roles',callback_data:'owner:roles'}],
  [{text:'📢 Channels',callback_data:'owner:channels'},{text:'⚙️ Settings',callback_data:'owner:settings'}]
 ]};}
-function isOwner(id,ownerId){return Number(id)===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0;}
+function isOwner(id,ownerId){const n=Number(id);if(config.ownerIds)return config.ownerIds.includes(n);return n===Number(ownerId||config.ownerId)&&Number(ownerId||config.ownerId)>0;}
 function register({bot,ownerId=config.ownerId,isClone=false,cloneId=null}){
  const owner=()=>ownerId;
  const cloneOwner=()=>isClone && isOwner(ownerId,ownerId);
