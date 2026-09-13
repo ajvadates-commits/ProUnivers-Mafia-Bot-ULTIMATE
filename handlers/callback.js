@@ -33,7 +33,7 @@ function register({bot,cloneId=0}) {
       else if(action==="game"&&value==="start"){
         const g=await game.getActive(q.message.chat.id);
         if(!g)return bot.answerCallbackQuery(q.id,{text:"❌ Faol o'yin yo'q"});
-        try{const m=await bot.getChatMember(q.message.chat.id,q.from.id);if(!["administrator","creator"].includes(m.status)){return bot.answerCallbackQuery(q.id,{text:"⛔ Faqat admin boshlay oladi"});}}catch(_){}
+        try{const admins=await bot.getChatAdministrators(q.message.chat.id);if(!admins.some(a=>a.user.id===q.from.id&&(a.status==="administrator"||a.status==="creator"))){return bot.answerCallbackQuery(q.id,{text:"⛔ Faqat admin boshlay oladi"});}}catch(_){}
         const players=await games.players(g.id);
         if(players.length<config.minPlayers)return bot.answerCallbackQuery(q.id,{text:`❌ Kamida ${config.minPlayers} ta o'yinchi kerak! Hozir: ${players.length}`});
         await games.update(g.id,{state:"running",phase:"night"});

@@ -9,7 +9,10 @@ const cloneActivity=require("../services/cloneActivity");
 const db=require("../database");
 const active=new Map();
 async function isAdmin(bot,chatId,userId){
-  try{const m=await bot.getChatMember(chatId,userId);return["administrator","creator"].includes(m.status);}catch(_){return false;}
+  try{
+    const admins=await bot.getChatAdministrators(chatId);
+    return admins.some(a=>a.user.id===userId&&(a.status==="administrator"||a.status==="creator"));
+  }catch(_){return false;}
 }
 function register({bot,cloneId=0}) {
   async function createGame(msg){
