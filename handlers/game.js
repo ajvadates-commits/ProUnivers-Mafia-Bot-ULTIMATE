@@ -87,6 +87,26 @@ function register({bot,cloneId=0}) {
       const btn=`https://t.me/topmafia_uzbot?start=join_${msg.chat.id}`;
       const sent=await bot.sendMessage(msg.chat.id,txt,{reply_markup:{inline_keyboard:[[{"text":"🎯  Qo'shilish","url":btn}]]}});
       try{await bot.pinChatMessage(msg.chat.id,sent.message_id,{disable_notification:true});}catch(_){}
+      const {start:startLobby}=require("../services/lobbyTimer");
+      const roles=require("../services/gameRoles");
+      const startMs=config.countdownMs||120000;
+      startLobby(g.id,async()=>{
+        const cur=await getActive(msg.chat.id);
+        if(!cur||cur.id!==g.id||cur.state!=="lobby") return;
+        const pl=await games.players(g.id);
+        if(pl.length<config.minPlayers){
+          await games.endAllByChat(msg.chat.id);
+          return bot.sendMessage(msg.chat.id,`❌ Yetarli o'yinchi yo'q (${pl.length}/${config.minPlayers}). Lobby yopildi.`);
+        }
+        const assigned=roles.assign(g.id,pl.map(p=>p.user_id));
+        for(const a of assigned){
+          await games.setRole(g.id,a.user_id,a.roleId);
+          const card=cardText(a.roleId);
+          if(card) try{await bot.sendMessage(a.user_id,`🎭  SIZNING ROLINGIZ\n━━━━━━━━━━━━━━━━━━\n${card}`);}catch(_){}
+        }
+        await games.update(g.id,{state:"running",phase:"night"});
+        return bot.sendMessage(msg.chat.id,`🎭  O'YIN AVTOMATIK BOSHLANDI!\n━━━━━━━━━━━━━━━━━━\n👥  ${pl.length} o'yinchi\n🎭  Har biriga rol PM'da yuborildi.\n━━━━━━━━━━━━━━━━━━`);
+      },startMs);
       return sent;
     }catch(e){return bot.sendMessage(msg.chat.id,"❌ Xatolik.");}
   }
