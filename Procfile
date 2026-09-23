@@ -1,1 +1,1 @@
-web: npm start
+web: python pro.tag.10_updated.py

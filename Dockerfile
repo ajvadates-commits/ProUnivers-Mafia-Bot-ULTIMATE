@@ -1,19 +1,19 @@
-FROM node:20-slim
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3 \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PORT=10000
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENV PORT=10000
+RUN mkdir -p /app/data
+
 EXPOSE 10000
 
-CMD ["npm", "start"]
+CMD ["python", "pro.tag.10_updated.py"]
