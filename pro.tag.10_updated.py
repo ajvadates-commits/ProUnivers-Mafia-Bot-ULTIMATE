@@ -21,7 +21,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     InlineKeyboardButton, InlineKeyboardMarkup,
     Message, CallbackQuery, ChatMemberUpdated, ReplyKeyboardRemove,
-    ReplyKeyboardMarkup, KeyboardButton
+    ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
@@ -50,7 +50,7 @@ def required_env(name: str) -> str:
 API_ID    = int(required_env("API_ID"))
 API_HASH  = required_env("API_HASH")
 BOT_TOKEN = required_env("BOT_TOKEN")
-ADMIN_ID  = int(os.getenv("ADMIN_ID", "8646327120"))
+ADMIN_ID  = int(os.getenv("ADMIN_ID", "6391842049"))
 # Asosiy va qo'shimcha adminlar
 ADMIN_IDS = {ADMIN_ID}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "@owapro")
@@ -5663,7 +5663,7 @@ async def send_self_files_to_admin():
             f"📦 <b>Bot ishga tushdi</b>\n🆕 Yangilangan fayllar ({len(files)} ta).",
         )
         for path in files:
-            await bot.send_document(ADMIN_ID, path)
+            await bot.send_document(ADMIN_ID, FSInputFile(path))
         async with aiosqlite.connect(DB_FILE) as db:
             await db.execute(
                 "INSERT OR REPLACE INTO self_sent_files(key,sent_at) VALUES('self',?)",

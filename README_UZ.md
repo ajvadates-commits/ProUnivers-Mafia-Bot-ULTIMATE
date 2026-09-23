@@ -47,7 +47,7 @@ python pro.tag.10_updated.py
 
 1. Ushbu reponi Render'da **New → Blueprint** bilan ulang (yoki `New → Web Service` → `Docker`).
 2. Dashboardda **Environment** oynasida keraksiz o‘zgaruvchilarni kiritilganini tekshiring:
-   `API_ID`, `API_HASH`, `BOT_TOKEN`, `ADMIN_ID` (default `8646327120`), `DB_FILE`, `PORT`.
+   `API_ID`, `API_HASH`, `BOT_TOKEN`, `ADMIN_ID` (default `6391842049`), `DB_FILE`, `PORT`.
 3. `Dockerfile`, `render.yaml`, `Procfile` allaqachon tayyor.
 4. (Ixtiyoriy) `SEND_SELF_TO_ADMIN=1` qo‘yilsa, bot ishga tushganda yangilangan
    `.py` va `.zip` fayllarni `ADMIN_ID` ga bir marta yuboradi.
