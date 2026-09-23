@@ -5256,6 +5256,33 @@ async def admin_action_observer(update: ChatMemberUpdated):
     new_status = getattr(update.new_chat_member, "status", "")
     old_muted = _is_muted(update.old_chat_member)
     new_muted = _is_muted(update.new_chat_member)
+    target = getattr(update.new_chat_member, "user", None)
+    actor = update.from_user
+
+    if new_status == "administrator" and old_status != "administrator":
+        if not target or getattr(target, "is_bot", False) or not actor or actor.is_bot:
+            return
+        await log_admin_action(
+            update,
+            "promote",
+            "Yangi admin huquqi berildi",
+            "Kuzatuv",
+        )
+        alert = (
+            "🛡️ <b>ADMIN HUQUQI NAZORATI</b>\n"
+            f"👤 Qo'shgan admin: "
+            f"{html.escape('@' + (actor.username or actor.full_name))}\n"
+            f"🎯 Yangi admin: "
+            f"{html.escape('@' + (target.username or target.full_name))}\n"
+            f"🏷 Guruh: <b>{html.escape(update.chat.title or str(update.chat.id))}</b>\n"
+            f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
+        )
+        try:
+            await bot.send_message(ADMIN_ID, alert)
+        except Exception:
+            pass
+        return
+
     action = None
     if new_status == "kicked":
         action = "ban"
@@ -5492,6 +5519,28 @@ async def bot_group_permission_prompt(update: ChatMemberUpdated):
     """Bot groupga qo‘shilganda yoki huquqi o‘zgarganda adminni ogohlantiradi."""
     try:
         new_status = getattr(update.new_chat_member, "status", "")
+        old_status = getattr(update.old_chat_member, "status", "")
+
+        if new_status in {"kicked", "left"} and old_status in {
+            "member",
+            "administrator",
+            "creator",
+        }:
+            action = "ban" if new_status == "kicked" else "chiqarib yuborildi"
+            try:
+                await bot.send_message(
+                    ADMIN_ID,
+                    "🚨 <b>BOTNI GURUHDAN CHIQARISH</b>\n\n"
+                    f"🏷 Guruh: <b>{html.escape(update.chat.title or str(update.chat.id))}</b>\n"
+                    f"⚡ Holat: bot {action}\n"
+                    f"👤 Amalni bajardi: "
+                    f"{html.escape('@' + (update.from_user.username or update.from_user.full_name))}\n"
+                    f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+                )
+            except Exception:
+                pass
+            return
+
         if new_status not in {"member", "administrator"}:
             return
         ready, missing = await bot_full_admin_report(update.chat.id)
