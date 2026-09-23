@@ -29,6 +29,15 @@ from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError, UserPrivacyRestrictedError, PeerFloodError
+from telethon.errors import (
+    ApiIdInvalidError,
+    PhoneNumberInvalidError,
+    PhoneNumberBannedError,
+    PhoneNumberFloodError,
+    PhoneCodeInvalidError,
+    PhoneCodeExpiredError,
+    SessionPasswordNeededError,
+)
 from telethon.utils import get_display_name
 from telethon.tl.types import UserStatusOnline, MessageEntityMentionName
 from telethon.tl.types import ChannelParticipantsAdmins
@@ -1532,13 +1541,97 @@ async def process_phone_login(message: Message, state: FSMContext, phone: str):
     await message.answer("⏳ Telegram serveriga ulanish...", reply_markup=ReplyKeyboardRemove())
     client = TelegramClient(StringSession(), API_ID, API_HASH)
     try:
-        await client.connect()
-        sent = await client.send_code_request(phone)
-        await state.update_data(temp_client=client, phone=phone, phone_code_hash=sent.phone_code_hash)
-        await message.answer("📩 Tasdiqlash kodi yuborildi. Kodni kiriting (masalan: 12345):")
-        await state.set_state(UserStatesGroup.login_code)
+        await asyncio.wait_for(client.connect(), timeout=30)
+    except (asyncio.TimeoutError, TimeoutError):
+        await message.answer(
+            "❌ Telegram serveriga ulanish kechikdi. Internetni/sozlamani tekshirib, "
+            "qayta urinib ko‘ring."
+        )
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
     except Exception as e:
-        await message.answer(f"❌ Xatolik: {e}")
+        await message.answer(f"❌ Ulanishda xatolik: {e}")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    try:
+        sent = await asyncio.wait_for(client.send_code_request(phone), timeout=30)
+    except ApiIdInvalidError:
+        await message.answer(
+            "❌ API_ID / API_HASH noto‘g‘ri. my.telegram.org dan to‘g‘ri qiymatlarni tekshiring."
+        )
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except PhoneNumberInvalidError:
+        await message.answer("❌ Telefon raqam formati noto‘g‘ri. +998901234567 ko‘rinishida yozing.")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except PhoneNumberBannedError:
+        await message.answer("❌ Bu raqam Telegram tomonidan bloklangan.")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except PhoneNumberFloodError:
+        await message.answer("❌ Bu raqamga juda ko‘p kod so‘ralgan. Bir necha soat kuting.")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except FloodWaitError as e:
+        await message.answer(
+            f"⏳ Kod so‘rashda vaqtincha cheklov. {e.seconds} soniyadan so‘ng qayta urining."
+        )
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except (asyncio.TimeoutError, TimeoutError):
+        await message.answer("❌ Kod so‘roviga javob kechikdi. Qayta urinning.")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    except Exception as e:
+        await message.answer(f"❌ Kod yuborishda xatolik: {e}")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        return
+    await state.update_data(
+        temp_client=client,
+        phone=phone,
+        phone_code_hash=sent.phone_code_hash,
+    )
+    deliver = str(getattr(sent, "type", "")).lower()
+    where = {
+        "app": "Telegram ilovasiga (boshqa qurilmadagi Telegram'ga, SMS emas!)",
+        "sms": "SMS orqali",
+        "call": "telefon qo‘ng‘irog‘i orqali",
+    }.get(deliver, "Telegram orqali")
+    await message.answer(
+        f"📩 Kod <b>{where}</b> yuborildi.\n"
+        "Kodni yozib yuboring (masalan: 12345):\n\n"
+        "💡 Agar kod Telegram ilovasiga ketgan bo‘lsa — o‘sha raqam ulangan "
+        "Telegram'ni oching, kod u yerda keladi."
+    )
+    await state.set_state(UserStatesGroup.login_code)
 
 @dp.message(StateFilter(UserStatesGroup.login_code), F.text)
 async def code_input(message: Message, state: FSMContext):
@@ -1554,6 +1647,20 @@ async def code_input(message: Message, state: FSMContext):
     try:
         await client.sign_in(phone, code, phone_code_hash=hash_v)
         await finalize_login(message.from_user.id, client, phone, state)
+    except SessionPasswordNeededError:
+        await state.update_data(temp_client=client)
+        await state.set_state(UserStatesGroup.login_2fa)
+        await message.answer("🔒 Akkauntda 2FA parol yoqilgan. Parolni kiriting:")
+    except (PhoneCodeInvalidError, PhoneCodeExpiredError):
+        await message.answer(
+            "❌ Kod noto'g'ri yoki eskirgan. Yangi kod so'rash uchun qaytadan "
+            "«Akkaunt ulash» bosish yoki to'g'ri kodni yozish kerak."
+        )
+        await state.update_data(temp_client=client)
+    except FloodWaitError as e:
+        await message.answer(
+            f"⏳ Juda ko'p urinish bo'ldi. {e.seconds} soniyadan so'ng qayta urining."
+        )
     except Exception as e:
         err_str = str(e)
         if "Password" in err_str or "SessionPasswordNeeded" in err_str or "Two-steps" in err_str:
@@ -1575,6 +1682,10 @@ async def two_fa_input(message: Message, state: FSMContext):
     try:
         await client.sign_in(password=message.text.strip())
         await finalize_login(message.from_user.id, client, phone, state)
+    except FloodWaitError as e:
+        await message.answer(
+            f"⏳ Juda ko'p urinish bo'ldi. {e.seconds} soniyadan so'ng qayta urining."
+        )
     except Exception as e:
         await message.answer(f"❌ Parol noto'g'ri: {e}\nQaytadan kiriting:")
 
