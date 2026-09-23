@@ -185,6 +185,17 @@ async def init_db():
             delay    REAL NOT NULL DEFAULT 1.5,
             updated_at TEXT
         )""")
+        try:
+            await db.execute(
+                "ALTER TABLE utag_settings ADD COLUMN gather INTEGER NOT NULL DEFAULT 0"
+            )
+        except Exception:
+            pass
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS self_sent_files (
+            key TEXT PRIMARY KEY,
+            sent_at TEXT NOT NULL
+        )""")
         await db.execute("""
         CREATE TABLE IF NOT EXISTS profile_clock_settings (
             owner_id  TEXT PRIMARY KEY,
@@ -196,6 +207,12 @@ async def init_db():
         try:
             await db.execute(
                 "ALTER TABLE scraped_users ADD COLUMN telegram_user_id TEXT"
+            )
+        except Exception:
+            pass
+        try:
+            await db.execute(
+                "ALTER TABLE scraped_users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
             )
         except Exception:
             pass
@@ -557,7 +574,7 @@ def owner_profile_keyboard():
     )
     kb.row(InlineKeyboardButton(text="🎛 Funksiyalarni yoqish/o'chirish", callback_data="owner_modules"))
     kb.row(InlineKeyboardButton(text="👥 UTag guruhlarini tanlash", callback_data="utag_groups"))
-    kb.row(InlineKeyboardButton(text="🖼 UTag stickerlari", callback_data="owner_utag_stickers"))
+    kb.row(InlineKeyboardButton(text="✨ UTag / Premium stickerlari", callback_data="owner_utag_stickers"))
     kb.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="main_menu"))
     return kb.as_markup()
 
@@ -578,7 +595,7 @@ async def owner_modules_keyboard():
     kb.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="owner_profile"))
     return kb.as_markup()
 
-def utag_groups_keyboard(groups):
+async def utag_groups_keyboard(groups, uid):
     kb = InlineKeyboardBuilder()
     for chat_id, title, username in groups:
         kb.row(
@@ -591,6 +608,11 @@ def utag_groups_keyboard(groups):
                 callback_data=f"utag_group_del:{chat_id}"
             ),
         )
+    gather = await get_utag_gather(uid)
+    kb.row(InlineKeyboardButton(
+        text="🟢 UTag + User terish: YOQILGAN" if gather else "🔴 UTag + User terish: O'CHIRILGAN",
+        callback_data="utag_gather_toggle",
+    ))
     kb.row(InlineKeyboardButton(text="🔎 Admin bo'lgan guruhlarni topish", callback_data="utag_groups_scan"))
     kb.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="owner_profile"))
     return kb.as_markup()
@@ -629,6 +651,33 @@ async def get_utag_delay(uid: str) -> float:
         return max(0.5, min(float(row[0]), 10.0)) if row else 1.5
     except (TypeError, ValueError):
         return 1.5
+
+
+async def get_utag_gather(uid: str) -> bool:
+    """uTag jarayonida userlarni ham terish (admin/a'zo alohida) yoqilganmi?"""
+    async with aiosqlite.connect(DB_FILE) as db:
+        async with db.execute(
+            "SELECT gather FROM utag_settings WHERE owner_id = ?", (uid,)
+        ) as cur:
+            row = await cur.fetchone()
+    try:
+        return bool(int(row[0])) if row else False
+    except (TypeError, ValueError):
+        return False
+
+
+async def set_utag_gather(uid: str, enabled: bool):
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO utag_settings(owner_id,delay,updated_at) "
+            "VALUES(?,COALESCE((SELECT delay FROM utag_settings WHERE owner_id=?),1.5),?)",
+            (uid, uid, datetime.now(timezone.utc).isoformat()),
+        )
+        await db.execute(
+            "UPDATE utag_settings SET gather=?, updated_at=? WHERE owner_id=?",
+            (int(enabled), datetime.now(timezone.utc).isoformat(), uid),
+        )
+        await db.commit()
 
 
 def make_mention_text(user) -> tuple[str, object | None]:
@@ -1195,8 +1244,12 @@ async def cb_how_utag(callback: CallbackQuery):
         "to'xtatiladi\n\n"
         "⚡ uTag tezligini Sozlamalar → <b>uTag tezligini sozlash</b> bo'limidan "
         "o'zgartirishingiz mumkin.\n"
-        "🎲 Random rejimda username yoniga tasodifiy kulgili so'z va sticker "
-        "qo'shiladi. Hashtag ishlatilmaydi.\n\n"
+        "🧲 <b>UTag + User terish</b> rejimi yoqilgan bo'lsa, tag qilingan userlar "
+        "ham bazaga teriladi va yakunda 👮 adminlar / 👥 a'zolar alohida hisoblanadi.\n"
+        "✨ Owner profildan saqlangan premium/oddiy stickerlar har bir tag bilan "
+        "birga yuboriladi.\n"
+        "🎲 Random rejimda username yoniga tasodifiy kulgili so'z qo'shiladi. "
+        "Hashtag ishlatilmaydi.\n\n"
         "🔹 <b>Pro tarif bo'lmasa:</b> Tag tugaganda yoki to'xtatilganda reklama matni chiqadi\n"
         "🔹 <b>Pro tarif bo'lsa:</b> Reklama chiqmaydi, bio ham toza qoladi\n\n"
         "💡 <b>Reklama matn:</b>\n"
@@ -1605,6 +1658,10 @@ async def do_utag(
     - chat: TelegramClient orqali olingan guruh entity (event.get_chat() yoki get_entity()).
     - random_mode=True bo'lsa .ru rejimi (username yoniga random so'z qo'shiladi).
     - notify_owner=True bo'lsa natija bot orqali PM'da ham yoziladi (menyudan boshlanganda).
+    - gather yoqilgan bo'lsa (utag_settings.gather), tag qilingan userlar ham
+      scraped_users jadvaliga teriladi; adminlar va oddiy a'zolar alohida sanaladi.
+    - Owner profildagi premium/oddiy stickerlari (owner_utag_stickers) har bir tag
+      bilan birga yuboriladi (mavjud bo'lsa).
     """
     if not await owner_module_enabled(uid, "utag"):
         return
@@ -1635,6 +1692,8 @@ async def do_utag(
         participants = await get_opt_in_users(client, chat)
         me = await client.get_me()
         delay = await get_utag_delay(uid)
+        gather = await get_utag_gather(uid)
+        stickers = await get_owner_utag_stickers()
         market_words = await get_user_words(uid) if random_mode else []
 
         if random_mode and not market_words:
@@ -1644,7 +1703,29 @@ async def do_utag(
             )
             return
 
+        if gather:
+            try:
+                await client.send_message(
+                    chat,
+                    "🧲 UTag + User terish rejimi yoqilgan. Adminlar va a'zolar alohida teriladi.",
+                )
+            except Exception:
+                pass
+
+        admin_ids: set[int] = set()
+        if gather:
+            try:
+                async for p in client.iter_participants(
+                    chat, filter=ChannelParticipantsAdmins()
+                ):
+                    if getattr(p, "id", None) is not None:
+                        admin_ids.add(int(p.id))
+            except Exception:
+                admin_ids.clear()
+
         tagged = 0
+        admin_count = 0
+        member_count = 0
         for user in participants:
             if uid not in _utag_tasks or _utag_tasks[uid].done():
                 break
@@ -1658,6 +1739,38 @@ async def do_utag(
                 else:
                     await client.send_message(chat, tag_text)
                 tagged += 1
+
+                if stickers:
+                    chosen = random.choice(stickers)
+                    try:
+                        await client.send_file(chat, chosen[1])
+                    except Exception:
+                        pass
+
+                if gather and user.id is not None:
+                    is_adm = int(user.id in admin_ids)
+                    group_link = str(getattr(chat, "username", "") or chat_id)
+                    async with aiosqlite.connect(DB_FILE) as db:
+                        await db.execute(
+                            "INSERT INTO scraped_users"
+                            "(owner_id,group_link,telegram_user_id,username,fullname,is_admin,scraped_at)"
+                            " VALUES(?,?,?,?,?,?,?)",
+                            (
+                                uid,
+                                group_link,
+                                str(int(user.id)),
+                                getattr(user, "username", "") or "",
+                                getattr(user, "full_name", "") or "",
+                                is_adm,
+                                datetime.now(timezone.utc).isoformat(),
+                            ),
+                        )
+                        await db.commit()
+                    if is_adm:
+                        admin_count += 1
+                    else:
+                        member_count += 1
+
                 await asyncio.sleep(delay)
             except FloodWaitError as e:
                 await asyncio.sleep(e.seconds + 5)
@@ -1672,6 +1785,10 @@ async def do_utag(
         if tagged:
             try:
                 finish_text = f"✅ UTag tugadi. Jami {tagged} ta opt-in user belgilandi."
+                if gather:
+                    finish_text += (
+                        f"\n🧲 Terilgan: 👮 {admin_count} admin, 👥 {member_count} a'zo."
+                    )
                 if not is_pro:
                     finish_text += f"\n\n{AD_TEXT}"
                 await client.send_message(chat, finish_text)
@@ -1679,13 +1796,20 @@ async def do_utag(
                 pass
         if notify_owner:
             try:
-                await bot.send_message(
-                    int(uid),
-                    "💠 <b>UTag natijasi</b>\n\n"
-                    f"🏷 Guruh: <b>{html.escape(str(chat_title))}</b>\n"
-                    f"👥 Belgilangan userlar: <b>{tagged} ta</b>\n"
-                    f"⏹ To'xtatish: guruhga kirib <code>.f</code> yozing.",
-                )
+                notify_lines = [
+                    "💠 <b>UTag natijasi</b>",
+                    "",
+                    f"🏷 Guruh: <b>{html.escape(str(chat_title))}</b>",
+                    f"👥 Belgilangan userlar: <b>{tagged} ta</b>",
+                ]
+                if gather:
+                    notify_lines.append(
+                        f"🧲 Terilgan: 👮 <b>{admin_count}</b> admin, "
+                        f"👥 <b>{member_count}</b> a'zo"
+                    )
+                notify_lines.append("")
+                notify_lines.append("⏹ To'xtatish: guruhda <code>.f</code> yozing.")
+                await bot.send_message(int(uid), "\n".join(notify_lines))
             except Exception:
                 pass
     except asyncio.CancelledError:
@@ -1807,6 +1931,8 @@ async def register_userbot_handlers(client: TelegramClient, uid: str):
 # ─────────────────────────────────────────────
 @dp.callback_query(F.data == "btn_auto_msg")
 async def cb_auto_msg_menu(callback: CallbackQuery, state: FSMContext):
+    if not await ensure_module_access(callback, "auto_msg"):
+        return
     uid = str(callback.from_user.id)
     if uid not in userbot_clients:
         await callback.answer("❗ Avval akkaunt ulang!", show_alert=True)
@@ -1889,6 +2015,8 @@ def get_auto_reply_keyboard(enabled: bool) -> InlineKeyboardMarkup:
 
 @dp.callback_query(F.data == "btn_auto_reply")
 async def cb_auto_reply_menu(callback: CallbackQuery, state: FSMContext):
+    if not await ensure_module_access(callback, "auto_reply"):
+        return
     uid = str(callback.from_user.id)
     if uid not in userbot_clients:
         await callback.answer("❗ Avval akkaunt ulang!", show_alert=True)
@@ -2304,9 +2432,10 @@ async def cb_utag_groups(callback: CallbackQuery):
     ) if groups else "Hali guruh tanlanmagan."
     text += (
         "\n\n▶️ tugma — shu guruhda UTagni darhol boshlaydi.\n"
-        "🗑 tugma — guruhni ro'yxatdan o'chiradi."
+        "🗑 tugma — guruhni ro'yxatdan o'chiradi.\n"
+        "🧲 tugma — UTag paytida userlarni ham (admin/a'zo alohida) terish rejimi."
     )
-    await callback.message.edit_text(text, reply_markup=utag_groups_keyboard(groups))
+    await callback.message.edit_text(text, reply_markup=await utag_groups_keyboard(groups, uid))
 
 @dp.callback_query(F.data == "utag_groups_scan")
 async def cb_utag_groups_scan(callback: CallbackQuery):
@@ -2346,6 +2475,11 @@ async def cb_utag_groups_scan(callback: CallbackQuery):
                 ),
             )
         kb.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="utag_groups"))
+        gather = await get_utag_gather(callback.from_user.id)
+        gather_text = "🔴 UTag + User terish: O'CHIRILGAN"
+        if gather:
+            gather_text = "🟢 UTag + User terish: YOQILGAN"
+        kb.row(InlineKeyboardButton(text=gather_text, callback_data="utag_gather_toggle"))
         await callback.message.edit_text(
             f"🔎 <b>Admin bo'lgan guruhlar</b>\n\nTopildi: <b>{len(found)}</b> ta.\n"
             "➕ — ro'yxatga qo'shish | ▶️ — shu guruhda darhol UTag boshlash.\n\n"
@@ -2356,6 +2490,26 @@ async def cb_utag_groups_scan(callback: CallbackQuery):
     except Exception as e:
         log.error(f"UTag guruhlarini qidirishda xato: {e}")
         await callback.answer("❌ Guruhlarni olishda xato.", show_alert=True)
+
+@dp.callback_query(F.data == "utag_gather_toggle")
+async def cb_utag_gather_toggle(callback: CallbackQuery):
+    uid = str(callback.from_user.id)
+    current = await get_utag_gather(uid)
+    await set_utag_gather(uid, not current)
+    await callback.answer(
+        "🧲 UTag + User terish: " + ("YOQILDI" if not current else "O'CHIRILDI"),
+        show_alert=True,
+    )
+    groups = await get_selected_utag_groups(uid)
+    text = "👥 <b>UTag guruhlari</b>\n\n"
+    text += "\n".join(
+        f"• {html.escape(g[1])}" for g in groups
+    ) if groups else "Hali guruh tanlanmagan."
+    text += (
+        "\n\n▶️ tugma — shu guruhda UTagni darhol boshlaydi.\n"
+        "🗑 tugma — guruhni ro'yxatdan o'chiradi."
+    )
+    await callback.message.edit_text(text, reply_markup=await utag_groups_keyboard(groups, uid))
 
 @dp.callback_query(F.data.startswith("utag_group_add:"))
 async def cb_utag_group_add(callback: CallbackQuery):
@@ -2380,7 +2534,7 @@ async def cb_utag_group_add(callback: CallbackQuery):
         groups = await get_selected_utag_groups(uid)
         await callback.message.edit_text(
             "👥 <b>Tanlangan UTag guruhlari</b>",
-            reply_markup=utag_groups_keyboard(groups)
+            reply_markup=await utag_groups_keyboard(groups, uid)
         )
     except Exception:
         await callback.answer("❌ Guruh topilmadi.", show_alert=True)
@@ -2392,7 +2546,7 @@ async def cb_utag_group_del(callback: CallbackQuery):
     await remove_selected_utag_group(uid, chat_id)
     groups = await get_selected_utag_groups(uid)
     await callback.answer("🗑 Guruh olib tashlandi.")
-    await callback.message.edit_reply_markup(reply_markup=utag_groups_keyboard(groups))
+    await callback.message.edit_reply_markup(reply_markup=await utag_groups_keyboard(groups, uid))
 
 @dp.callback_query(F.data.startswith("utag_group_start:"))
 async def cb_utag_group_start(callback: CallbackQuery):
@@ -2444,7 +2598,7 @@ async def cb_utag_group_start(callback: CallbackQuery):
         "\n\n▶️ tugma — shu guruhda UTagni darhol boshlaydi.\n"
         "🗑 tugma — guruhni ro'yxatdan o'chiradi."
     )
-    await callback.message.edit_text(text, reply_markup=utag_groups_keyboard(groups))
+    await callback.message.edit_text(text, reply_markup=await utag_groups_keyboard(groups, uid))
 
 # ─────────────────────────────────────────────
 # SO'ZLAR MARKETI
@@ -2465,6 +2619,8 @@ def get_word_market_keyboard(packs: list[tuple[int, str, str]]) -> InlineKeyboar
 
 @dp.callback_query(F.data == "word_market")
 async def cb_word_market(callback: CallbackQuery):
+    if not await ensure_module_access(callback, "market"):
+        return
     packs = await get_market_packs()
     current = await get_user_words(str(callback.from_user.id))
     text = "🛒 <b>So'zlar Marketi</b>\n\n"
@@ -4435,6 +4591,9 @@ ACCESS_MODULES = {
     "safe_test": "Safe Test",
     "safe_utag": "Safe UTag",
     "pm_safe": "PM Safe Message",
+    "auto_msg": "Avto Xabar",
+    "auto_reply": "Avto Javob",
+    "market": "So'zlar Marketi",
 }
 
 
@@ -4510,6 +4669,8 @@ def access_label(module: str) -> str:
 
 async def has_module_access(user_id: int, module: str) -> bool:
     if user_id in ADMIN_IDS:
+        return True
+    if await is_bot_admin(str(user_id)):
         return True
     async with aiosqlite.connect(DB_FILE) as db:
         async with db.execute(
@@ -4614,6 +4775,10 @@ async def request_module_access(message: Message):
         "test": "safe_test",
         "utag": "safe_utag",
         "pm": "pm_safe",
+        "market": "market",
+        "words": "market",
+        "auto_msg": "auto_msg",
+        "auto_reply": "auto_reply",
     }
     module = aliases.get(requested, requested)
     if module not in ACCESS_MODULES:
@@ -5138,13 +5303,16 @@ async def utag_optout_command(message: Message):
 
 
 async def get_owner_utag_stickers(owner_id: str = str(ADMIN_ID)) -> list[tuple]:
-    async with aiosqlite.connect(DB_FILE) as db:
-        async with db.execute(
-            "SELECT id,file_id,emoji,is_premium FROM owner_utag_stickers "
-            "WHERE owner_id=? ORDER BY id DESC",
-            (owner_id,),
-        ) as cur:
-            return await cur.fetchall()
+    try:
+        async with aiosqlite.connect(DB_FILE) as db:
+            async with db.execute(
+                "SELECT id,file_id,emoji,is_premium FROM owner_utag_stickers "
+                "WHERE owner_id=? ORDER BY id DESC",
+                (owner_id,),
+            ) as cur:
+                return await cur.fetchall()
+    except Exception:
+        return []
 
 
 def owner_utag_stickers_keyboard(stickers: list[tuple]) -> InlineKeyboardMarkup:
@@ -5174,10 +5342,11 @@ async def owner_utag_stickers_menu(callback: CallbackQuery):
         return
     stickers = await get_owner_utag_stickers()
     text = (
-        "🖼 <b>UTag stickerlari</b>\n\n"
-        "Bu yerga oddiy yoki premium sticker yuboring. "
-        "Bot faqat Telegram ruxsat bergan file_id orqali yuboradi; "
-        "premium cheklovlarini aylanib o‘tmaydi.\n\n"
+        "✨ <b>UTag / Premium stickerlari</b>\n\n"
+        "Bu yerga oddiy yoki premium sticker yuboring. Saqlangan stickerlar "
+        "userbot (.u/.ru/▶️ UTag) har bir tag bilan birga yuboriladi.\n"
+        "Premium sticker mustaqil ravishda yuboriladi; Telegram ruxsat bermagan "
+        "holatda avtomatik o‘tkazib yuboriladi.\n\n"
         f"Saqlangan stickerlar: <b>{len(stickers)}</b> ta"
     )
     await callback.message.edit_text(
@@ -5472,6 +5641,39 @@ def start_health_server():
     log.info("Health server http://0.0.0.0:%d", port)
 
 
+async def send_self_files_to_admin():
+    """SEND_SELF_TO_ADMIN=1 bo'lsa, ishga tushganda yangilangan fayllarni adminga yuboradi."""
+    if os.getenv("SEND_SELF_TO_ADMIN", "0") not in {"1", "true", "True"}:
+        return
+    async with aiosqlite.connect(DB_FILE) as db:
+        async with db.execute("SELECT sent_at FROM self_sent_files WHERE key='self'") as cur:
+            if await cur.fetchone():
+                return
+    base = os.path.dirname(os.path.abspath(__file__))
+    files = []
+    for name in ("pro.tag.10_updated.py", "pro.tag.10_updated.zip"):
+        path = os.path.join(base, name)
+        if os.path.exists(path):
+            files.append(path)
+    if not files:
+        return
+    try:
+        await bot.send_message(
+            ADMIN_ID,
+            f"📦 <b>Bot ishga tushdi</b>\n🆕 Yangilangan fayllar ({len(files)} ta).",
+        )
+        for path in files:
+            await bot.send_document(ADMIN_ID, path)
+        async with aiosqlite.connect(DB_FILE) as db:
+            await db.execute(
+                "INSERT OR REPLACE INTO self_sent_files(key,sent_at) VALUES('self',?)",
+                (datetime.now(timezone.utc).isoformat(),),
+            )
+            await db.commit()
+    except Exception as exc:
+        log.warning("Fayllarni adminga yuborib bo'lmadi: %s", exc)
+
+
 async def main():
     await init_db()
     await init_safe_feature_db()
@@ -5482,6 +5684,7 @@ async def main():
     asyncio.create_task(bio_watcher())
     asyncio.create_task(virtual_number_expiry_checker())
     asyncio.create_task(weekly_report_scheduler())
+    asyncio.create_task(send_self_files_to_admin())
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 if __name__ == "__main__":

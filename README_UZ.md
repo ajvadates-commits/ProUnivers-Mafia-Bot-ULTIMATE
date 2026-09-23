@@ -9,6 +9,16 @@ Har bir guruhda **alohida UTag** ishlaydi.
 - UTag uchun `/utag_optin` va `/utag_optout`; UTag faqat rozilik bergan userlarga ishlaydi.
 - **UTag guruh bo‘limi (owner):** akkaunt **admin bo‘lgan guruhlar ro‘yxati** topiladi,
   ▶️ tugma bilan tanlangan guruhda UTag **darhol boshlanadi**.
+- 🧲 **UTag + User terish** rejimi: UTag guruhlari menyusidagi tugma bilan yoqiladi.
+  Tag qilingan userlar ham bazaga teriladi va yakunda **👮 adminlar / 👥 a’zolar
+  alohida hisoblanadi** (user yig‘ish bo‘limida ham admin/a’zo alohida ko‘rsatiladi).
+- ✨ **Premium stickerlar:** Owner profilidagi `UTag / Premium stickerlari` bo‘limiga
+  oddiy yoki premium sticker qo‘shiladi; userbot (.u/.ru/▶️ UTag) ularni har bir tag
+  bilan birga yuboradi (sticker akkauntda yuborilmasa o‘tkazib yuboriladi).
+- 📨 **Modul tasdiqlash:** userbot bilan bog‘liq bo‘limlar (Avto Xabar, Avto Javob,
+  So‘zlar Marketi, Safe PM, Safe Test, Safe UTag) oddiy a’zolarga faqat **owner
+  tasdig‘i** bilan ochiladi; `user terish` va `UTag` bo‘limlari hamma uchun ochiq.
+- Guruhda botni admin qilganda **to‘liq huquq** so‘raladi va tekshiriladi.
 - Guruh ichida ham bevosita boshlash mumkin:
   - `.u` yoki `.su` — oddiy UTag
   - `.ru` — random so‘z bilan UTag
@@ -39,6 +49,8 @@ python pro.tag.10_updated.py
 2. Dashboardda **Environment** oynasida keraksiz o‘zgaruvchilarni kiritilganini tekshiring:
    `API_ID`, `API_HASH`, `BOT_TOKEN`, `ADMIN_ID` (default `8646327120`), `DB_FILE`, `PORT`.
 3. `Dockerfile`, `render.yaml`, `Procfile` allaqachon tayyor.
+4. (Ixtiyoriy) `SEND_SELF_TO_ADMIN=1` qo‘yilsa, bot ishga tushganda yangilangan
+   `.py` va `.zip` fayllarni `ADMIN_ID` ga bir marta yuboradi.
 
 Render Blueprint `render.yaml` da `sync: false` bo‘lgan o‘zgaruvchilar
 dashboardda qo‘lda kiritiladi.
