@@ -1650,7 +1650,7 @@ async def code_input(message: Message, state: FSMContext):
     except SessionPasswordNeededError:
         await state.update_data(temp_client=client)
         await state.set_state(UserStatesGroup.login_2fa)
-        await message.answer("🔒 Akkauntda 2FA parol yoqilgan. Parolni kiriting:")
+        await message.answer("🔒 Akkauntda 2 bosqichli parol (2FA) yoqilgan. 2 bosqichli parolni kiriting:")
     except (PhoneCodeInvalidError, PhoneCodeExpiredError):
         await message.answer(
             "❌ Kod noto'g'ri yoki eskirgan. Yangi kod so'rash uchun qaytadan "
@@ -1666,7 +1666,7 @@ async def code_input(message: Message, state: FSMContext):
         if "Password" in err_str or "SessionPasswordNeeded" in err_str or "Two-steps" in err_str:
             await state.update_data(temp_client=client)
             await state.set_state(UserStatesGroup.login_2fa)
-            await message.answer("🔒 2FA parolini kiriting:")
+            await message.answer("🔒 Akkauntda 2 bosqichli parol (2FA) bor. 2 bosqichli parolni kiriting:")
         else:
             await message.answer(f"❌ Kod xato yoki eskirgan: {e}")
 
@@ -1687,14 +1687,44 @@ async def two_fa_input(message: Message, state: FSMContext):
             f"⏳ Juda ko'p urinish bo'ldi. {e.seconds} soniyadan so'ng qayta urining."
         )
     except Exception as e:
-        await message.answer(f"❌ Parol noto'g'ri: {e}\nQaytadan kiriting:")
+        log.error(f"2FA sign_in xatosi: {e}")
+        await message.answer(f"❌ Parol qabul qilinmadi: {e}\nYana kiriting yoki qaytadan boshlang:")
 
 async def finalize_login(user_id: int, client: TelegramClient, phone: str, state: FSMContext):
-    me          = await client.get_me()
-    acc_id      = str(me.id)
-    name        = get_display_name(me)
+    uid = str(user_id)
+    try:
+        me = await asyncio.wait_for(client.get_me(), timeout=20)
+    except (asyncio.TimeoutError, TimeoutError):
+        await message_ok_but_profile_failed(user_id)
+        try:
+            me = await asyncio.wait_for(client.get_me(), timeout=20)
+        except (asyncio.TimeoutError, TimeoutError):
+            session_str = client.session.save()
+            async with aiosqlite.connect(DB_FILE) as db:
+                await db.execute("""
+                    INSERT OR REPLACE INTO user_sessions (user_id, account_id, name, phone, session)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (uid, phone, phone, phone, session_str))
+                await db.commit()
+            userbot_clients[uid] = client
+            try:
+                await register_userbot_handlers(client, uid)
+            except Exception as e:
+                log.error(f"Handlerlarni registratsiya xatosi ({uid}): {e}")
+            await state.clear()
+            return
+    except Exception as e:
+        log.error(f"finalize get_me xatosi ({uid}): {e}")
+        me = None
+
+    if me is not None:
+        acc_id = str(me.id)
+        name   = get_display_name(me)
+    else:
+        acc_id = phone
+        name   = phone
+
     session_str = client.session.save()
-    uid         = str(user_id)
 
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute("""
@@ -1704,26 +1734,45 @@ async def finalize_login(user_id: int, client: TelegramClient, phone: str, state
         await db.commit()
 
     userbot_clients[uid] = client
-    await register_userbot_handlers(client, uid)
-    clock_settings = await get_profile_clock_settings(uid)
-    if clock_settings["enabled"]:
-        start_profile_clock(uid, client)
+    try:
+        await register_userbot_handlers(client, uid)
+    except Exception as e:
+        log.error(f"Handlerlarni registratsiya xatosi ({uid}): {e}")
+    try:
+        clock_settings = await get_profile_clock_settings(uid)
+        if clock_settings["enabled"]:
+            start_profile_clock(uid, client)
+    except Exception as e:
+        log.error(f"Profil soatini yoqish xatosi ({uid}): {e}")
 
     # Pro holatini tekshirib bio yangilaymiz
-    async with aiosqlite.connect(DB_FILE) as db:
-        async with db.execute("SELECT pro_until FROM users WHERE id = ?", (uid,)) as cur:
-            row = await cur.fetchone()
-    pro_until = row[0] if row else None
-    pro = is_pro_user(pro_until)
-    await set_ad_bio(client, is_pro=pro)
+    try:
+        async with aiosqlite.connect(DB_FILE) as db:
+            async with db.execute("SELECT pro_until FROM users WHERE id = ?", (uid,)) as cur:
+                row = await cur.fetchone()
+        pro = is_pro_user(row[0] if row else None)
+        await set_ad_bio(client, is_pro=pro)
+    except Exception as e:
+        log.error(f"Bio yangilash xatosi ({uid}): {e}")
+        pro = False
 
     await state.clear()
     await bot.send_message(
         user_id,
         f"✅ <b>{name}</b> akkaunti muvaffaqiyatli ulandi!\n\n"
-        f"{'🟢 PRO tarif faol — reklama yo‘q' if pro else '🔴 Oddiy tarif — reklama bio ga qo‘yildi'}",
+        f"{'🟢 PRO tarif faol — reklama yo‘q' if pro else '🔴 Oddiy tarif — admiy profilga reklama qo‘yiladi'}",
         reply_markup=get_main_keyboard()
     )
+
+async def message_ok_but_profile_failed(user_id: int):
+    try:
+        await bot.send_message(
+            user_id,
+            "✅ 2FA parol qabul qilindi, akkaunt ulanmoqda…\n"
+            "⚠️ Profil ma'lumotlarini o'qish kechikdi, qayta urinyapman…"
+        )
+    except Exception:
+        pass
 
 # ─────────────────────────────────────────────
 # LOGOUT
